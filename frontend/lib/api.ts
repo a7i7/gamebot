@@ -80,29 +80,51 @@ function authHeaders(): Record<string, string> {
 
 // --- Auth ---
 
+// Extracts a human-readable message from a FastAPI error response (422 or plain detail).
+async function extractErrorMessage(res: Response): Promise<string> {
+  let body: unknown;
+  try {
+    body = await res.json();
+  } catch {
+    return await res.text();
+  }
+  if (body && typeof body === "object") {
+    const b = body as Record<string, unknown>;
+    // FastAPI 422 validation errors: { detail: [{ msg, loc }] }
+    if (Array.isArray(b.detail)) {
+      return (b.detail as Array<{ msg: string }>)
+        .map((e) => e.msg.replace(/^Value error, /, ""))
+        .join("; ");
+    }
+    if (typeof b.detail === "string") return b.detail;
+  }
+  return "Request failed";
+}
+
 export async function signup(
   email: string,
+  username: string,
   password: string
 ): Promise<{ access_token: string }> {
   const res = await fetch(`${API_URL}/auth/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, username, password }),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error(`${res.status}:${await extractErrorMessage(res)}`);
   return res.json();
 }
 
 export async function login(
-  email: string,
+  identifier: string,
   password: string
 ): Promise<{ access_token: string }> {
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ identifier, password }),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error(`${res.status}:${await extractErrorMessage(res)}`);
   return res.json();
 }
 

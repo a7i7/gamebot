@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Menu, LogOut } from "lucide-react";
+import { Menu, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import { clearToken, getEmailFromToken } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,12 @@ const navItems = [
   { href: "/submissions", icon: ListChecks, label: "Submissions" },
 ];
 
-export function AppHeader() {
+interface AppHeaderProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export function AppHeader({ collapsed, onToggle }: AppHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [email, setEmail] = useState<string | null>(null);
@@ -32,7 +37,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-40 h-14 flex items-center border-b border-border bg-background px-4 gap-4">
+    <header className="sticky top-0 z-40 h-14 flex items-center border-b border-border bg-background px-4 gap-3">
       {/* Mobile menu */}
       <Sheet>
         <SheetTrigger className="md:hidden inline-flex items-center justify-center rounded-lg p-2 text-foreground hover:bg-accent transition-colors">
@@ -61,6 +66,15 @@ export function AppHeader() {
           </nav>
         </SheetContent>
       </Sheet>
+
+      {/* Sidebar toggle — desktop only */}
+      <button
+        onClick={onToggle}
+        className="hidden md:inline-flex items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        {collapsed ? <PanelLeftOpen className="size-5" /> : <PanelLeftClose className="size-5" />}
+      </button>
 
       {/* Logo */}
       <Link href="/" className="flex items-center gap-2 font-bold text-foreground">

@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,11 +22,13 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const { access_token } = await login(email.trim(), password);
+      const { access_token } = await login(identifier.trim(), password);
       setToken(access_token);
       router.push("/");
-    } catch {
-      setError("Invalid email or password");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      const detail = msg.includes(":") ? msg.split(":").slice(1).join(":") : msg;
+      setError(detail || "Invalid email/username or password");
     } finally {
       setLoading(false);
     }
@@ -42,13 +44,13 @@ export default function LoginPage() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="identifier">Email or Username</Label>
             <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setError(""); }}
+              id="identifier"
+              type="text"
+              placeholder="you@example.com or your_username"
+              value={identifier}
+              onChange={(e) => { setIdentifier(e.target.value); setError(""); }}
               autoFocus
               required
             />

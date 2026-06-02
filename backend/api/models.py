@@ -1,6 +1,10 @@
+import re
 from datetime import datetime
 from typing import Literal, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+_EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
+_USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,30}$")
 
 
 # --- Test run schemas ---
@@ -94,12 +98,46 @@ class SubmissionResponse(BaseModel):
 
 class SignupRequest(BaseModel):
     email: str
+    username: str
     password: str
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, v: str) -> str:
+        normalized = v.strip().lower()
+        if not _EMAIL_RE.match(normalized):
+            raise ValueError("Enter a valid email address")
+        return normalized
+
+    @field_validator("username")
+    @classmethod
+    def validate_username(cls, v: str) -> str:
+        v = v.strip()
+        if not _USERNAME_RE.match(v):
+            raise ValueError(
+                "Username must be 3–30 characters and contain only letters, numbers, or underscores"
+            )
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
 
 
 class LoginRequest(BaseModel):
-    email: str
+    identifier: str  # email or username
     password: str
+
+    @field_validator("identifier")
+    @classmethod
+    def validate_identifier(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Email or username is required")
+        return v
 
 
 class TokenResponse(BaseModel):
@@ -110,4 +148,5 @@ class TokenResponse(BaseModel):
 class MeResponse(BaseModel):
     id: str
     email: str
+    username: str
     created_at: datetime

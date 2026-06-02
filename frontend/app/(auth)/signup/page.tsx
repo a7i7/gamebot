@@ -10,9 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+function parseError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : "";
+  const detail = msg.includes(":") ? msg.split(":").slice(1).join(":") : msg;
+  if (detail.includes("Email already registered")) return "Email already registered";
+  if (detail.includes("Username already taken")) return "Username already taken";
+  return detail || "Sign up failed";
+}
+
 export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,18 +29,13 @@ export default function SignupPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
     setLoading(true);
     try {
-      const { access_token } = await signup(email.trim(), password);
+      const { access_token } = await signup(email.trim(), username.trim(), password);
       setToken(access_token);
       router.push("/");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      setError(msg.includes("409") || msg.includes("already") ? "Email already registered" : "Sign up failed");
+      setError(parseError(err));
     } finally {
       setLoading(false);
     }
@@ -55,6 +59,17 @@ export default function SignupPage() {
               value={email}
               onChange={(e) => { setEmail(e.target.value); setError(""); }}
               autoFocus
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              type="text"
+              placeholder="letters, numbers, underscores"
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setError(""); }}
               required
             />
           </div>
