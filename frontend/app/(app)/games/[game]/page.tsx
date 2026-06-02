@@ -375,7 +375,7 @@ export default function GameEditorPage() {
           {error && <span className="text-xs text-destructive">{error}</span>}
           <div className="flex items-center gap-1 border border-border rounded-md px-2 py-1">
             <span className="text-xs text-muted-foreground mr-1">vs</span>
-            <Select value={opponent} onValueChange={setOpponent}>
+            <Select value={opponent} onValueChange={(v) => v && setOpponent(v)}>
               <SelectTrigger className="w-24 h-6 text-xs border-0 p-0 focus:ring-0">
                 <SelectValue />
               </SelectTrigger>
