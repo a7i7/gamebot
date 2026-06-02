@@ -8,8 +8,9 @@ import {
   Panel,
   Separator as PanelSeparator,
 } from "react-resizable-panels";
-import { submitMatch } from "@/lib/api";
+import { submitTestRun, createSubmission } from "@/lib/api";
 import type { Lang } from "@/lib/api";
+import Link from "next/link";
 import { GameInfoPanel } from "@/components/GameInfoPanel";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { Button } from "@/components/ui/button";
@@ -314,7 +315,8 @@ export default function GameEditorPage() {
   const [code, setCode] = useState(STARTER_CODE.python);
   const [opponent, setOpponent] = useState("easy");
   const [submitting, setSubmitting] = useState(false);
-  const [matchId, setMatchId] = useState<string | null>(null);
+  const [testRunMatchId, setTestRunMatchId] = useState<string | null>(null);
+  const [submissionStarted, setSubmissionStarted] = useState(false);
   const [error, setError] = useState("");
 
   function handleLangChange(newLang: Lang) {
@@ -322,13 +324,29 @@ export default function GameEditorPage() {
     setCode(STARTER_CODE[newLang]);
   }
 
-  async function handleRun(isSubmit: boolean) {
+  async function handleTestRun() {
     setError("");
     setSubmitting(true);
-    setMatchId(null);
+    setSubmissionStarted(false);
+    setTestRunMatchId(null);
     try {
-      const { match_id } = await submitMatch(game, lang, code, opponent);
-      setMatchId(match_id);
+      const { match_id } = await submitTestRun(game, lang, code, opponent);
+      setTestRunMatchId(match_id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Test run failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleSubmit() {
+    setError("");
+    setSubmitting(true);
+    setTestRunMatchId(null);
+    setSubmissionStarted(false);
+    try {
+      await createSubmission(game, lang, code);
+      setSubmissionStarted(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Submission failed");
     } finally {
@@ -353,33 +371,33 @@ export default function GameEditorPage() {
           </SelectContent>
         </Select>
 
-        <Select value={opponent} onValueChange={setOpponent}>
-          <SelectTrigger className="w-32 h-8 text-sm">
-            <SelectValue>
-              {opponent.charAt(0).toUpperCase() +
-                opponent.substring(1).toLocaleLowerCase()}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="easy">Easy</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="hard">Hard</SelectItem>
-          </SelectContent>
-        </Select>
-
         <div className="ml-auto flex items-center gap-2">
           {error && <span className="text-xs text-destructive">{error}</span>}
+          <div className="flex items-center gap-1 border border-border rounded-md px-2 py-1">
+            <span className="text-xs text-muted-foreground mr-1">vs</span>
+            <Select value={opponent} onValueChange={setOpponent}>
+              <SelectTrigger className="w-24 h-6 text-xs border-0 p-0 focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="easy">Easy</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="hard">Hard</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={handleTestRun}
+              disabled={submitting}
+            >
+              {submitting ? "Running…" : "Test Run"}
+            </Button>
+          </div>
           <Button
             size="sm"
-            variant="outline"
-            onClick={() => handleRun(false)}
-            disabled={submitting}
-          >
-            {submitting ? "Running…" : "Test Run"}
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => handleRun(true)}
+            onClick={handleSubmit}
             disabled={submitting}
           >
             {submitting ? "Submitting…" : "Submit →"}
@@ -414,7 +432,22 @@ export default function GameEditorPage() {
             </Panel>
             <PanelSeparator className="w-1 bg-border hover:bg-primary/40 transition-colors cursor-col-resize" />
             <Panel defaultSize={30} minSize={20}>
-              <ResultsPanel matchId={matchId} />
+              {submissionStarted ? (
+                <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
+                  <span className="text-4xl">🚀</span>
+                  <div>
+                    <p className="font-semibold text-foreground">Submission queued</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Running 15 matches across Easy, Medium, and Hard.
+                    </p>
+                  </div>
+                  <Link href="/submissions">
+                    <Button size="sm" variant="outline">View progress →</Button>
+                  </Link>
+                </div>
+              ) : (
+                <ResultsPanel matchId={testRunMatchId} />
+              )}
             </Panel>
           </PanelGroup>
         </div>
@@ -441,7 +474,22 @@ export default function GameEditorPage() {
             />
           </div>
           <div className="border-t border-border flex-1">
-            <ResultsPanel matchId={matchId} />
+            {submissionStarted ? (
+                <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
+                  <span className="text-4xl">🚀</span>
+                  <div>
+                    <p className="font-semibold text-foreground">Submission queued</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Running 15 matches across Easy, Medium, and Hard.
+                    </p>
+                  </div>
+                  <Link href="/submissions">
+                    <Button size="sm" variant="outline">View progress →</Button>
+                  </Link>
+                </div>
+              ) : (
+                <ResultsPanel matchId={testRunMatchId} />
+              )}
           </div>
         </div>
       </div>

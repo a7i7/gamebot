@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMatch } from "@/lib/api";
-import type { MatchDetail } from "@/lib/api";
+import { getTestRun } from "@/lib/api";
+import type { TestRunDetail } from "@/lib/api";
 import Board from "@/components/Board";
 import StatusBadge from "@/components/StatusBadge";
 import {
@@ -17,7 +17,7 @@ interface ResultsPanelProps {
 }
 
 export function ResultsPanel({ matchId }: ResultsPanelProps) {
-  const [match, setMatch] = useState<MatchDetail | null>(null);
+  const [match, setMatch] = useState<TestRunDetail | null>(null);
   const [logsOpen, setLogsOpen] = useState(true);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function ResultsPanel({ matchId }: ResultsPanelProps) {
 
     async function poll() {
       try {
-        const data = await getMatch(matchId!);
+        const data = await getTestRun(matchId!);
         if (cancelled) return;
         setMatch(data);
         if (data.status === "pending" || data.status === "running") {

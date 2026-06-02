@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Gamepad2, ListChecks } from "lucide-react";
+import { Gamepad2, Trophy, FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", icon: Gamepad2, label: "Games" },
-  { href: "/submissions", icon: ListChecks, label: "Submissions" },
+  { href: "/submissions", icon: Trophy, label: "Submissions" },
+  { href: "/test-runs", icon: FlaskConical, label: "Test Runs" },
 ];
 
 export function AppSidebar() {

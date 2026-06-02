@@ -5,11 +5,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 export type Lang = "python" | "javascript" | "java" | "cpp";
 export type MatchStatus = "pending" | "running" | "completed" | "failed";
 
-export interface MatchSummary {
+// --- Test Run types ---
+
+export interface TestRunSummary {
   match_id: string;
   status: MatchStatus;
   game: string;
   lang: Lang;
+  opponent: string | null;
   submitted_at: string;
 }
 
@@ -23,7 +26,7 @@ export interface MatchResult {
   bot_logs: string[];
 }
 
-export interface MatchDetail extends MatchSummary {
+export interface TestRunDetail extends TestRunSummary {
   result: MatchResult | null;
   error: string | null;
 }
@@ -34,6 +37,39 @@ export interface CodeResponse {
   code: string;
 }
 
+// --- Scored Submission types ---
+
+export interface SubmissionSummary {
+  submission_id: string;
+  status: MatchStatus;
+  game: string;
+  lang: Lang;
+  score: number | null;
+  matches_completed: number;
+  total_matches: number;
+  created_at: string;
+}
+
+export interface SubmissionMatchDetail {
+  match_id: string;
+  opponent: string | null;
+  status: MatchStatus;
+  winner_player: number | null;
+  is_draw: boolean | null;
+  reason: string | null;
+  points_earned: number | null;
+}
+
+export interface SubmissionDetail extends SubmissionSummary {
+  wins: number;
+  draws: number;
+  losses: number;
+  matches: SubmissionMatchDetail[];
+  completed_at: string | null;
+}
+
+// --- Helpers ---
+
 function authHeaders(): Record<string, string> {
   const token = getToken();
   return {
@@ -41,6 +77,8 @@ function authHeaders(): Record<string, string> {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
+
+// --- Auth ---
 
 export async function signup(
   email: string,
@@ -68,13 +106,15 @@ export async function login(
   return res.json();
 }
 
-export async function submitMatch(
+// --- Test Runs ---
+
+export async function submitTestRun(
   game: string,
   lang: Lang,
   code: string,
   opponent: string = "easy"
 ): Promise<{ match_id: string }> {
-  const res = await fetch(`${API_URL}/matches`, {
+  const res = await fetch(`${API_URL}/test-runs`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({ game, lang, code, opponent }),
@@ -83,22 +123,54 @@ export async function submitMatch(
   return res.json();
 }
 
-export async function listMatches(): Promise<MatchSummary[]> {
-  const res = await fetch(`${API_URL}/matches`, { headers: authHeaders() });
+export async function listTestRuns(): Promise<TestRunSummary[]> {
+  const res = await fetch(`${API_URL}/test-runs`, { headers: authHeaders() });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
-export async function getMatch(matchId: string): Promise<MatchDetail> {
-  const res = await fetch(`${API_URL}/matches/${matchId}`, {
+export async function getTestRun(matchId: string): Promise<TestRunDetail> {
+  const res = await fetch(`${API_URL}/test-runs/${matchId}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
-export async function getMatchCode(matchId: string): Promise<CodeResponse> {
-  const res = await fetch(`${API_URL}/matches/${matchId}/code`, {
+export async function getTestRunCode(matchId: string): Promise<CodeResponse> {
+  const res = await fetch(`${API_URL}/test-runs/${matchId}/code`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// --- Scored Submissions ---
+
+export async function createSubmission(
+  game: string,
+  lang: Lang,
+  code: string
+): Promise<{ submission_id: string }> {
+  const res = await fetch(`${API_URL}/submissions`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ game, lang, code }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function listSubmissions(): Promise<SubmissionSummary[]> {
+  const res = await fetch(`${API_URL}/submissions`, { headers: authHeaders() });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function getSubmission(
+  submissionId: string
+): Promise<SubmissionDetail> {
+  const res = await fetch(`${API_URL}/submissions/${submissionId}`, {
     headers: authHeaders(),
   });
   if (!res.ok) throw new Error(await res.text());

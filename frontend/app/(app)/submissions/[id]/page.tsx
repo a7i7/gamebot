@@ -2,28 +2,48 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getMatch, getMatchCode } from "@/lib/api";
-import type { MatchDetail, CodeResponse } from "@/lib/api";
-import Board from "@/components/Board";
+import Link from "next/link";
+import { getSubmission } from "@/lib/api";
+import type { SubmissionDetail, SubmissionMatchDetail } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { ChevronLeft, ChevronDown } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
+
+const DIFFICULTIES = ["easy", "medium", "hard"] as const;
+
+function matchScore(m: SubmissionMatchDetail): string {
+  if (m.status !== "completed" || m.points_earned === null) return "—";
+  return `${m.points_earned}`;
+}
+
+function outcomeLabel(m: SubmissionMatchDetail): string {
+  if (m.status === "pending" || m.status === "running") return "—";
+  if (m.status === "failed") return "Error";
+  if (m.is_draw) return "Draw";
+  return m.winner_player === 1 ? "Win" : "Loss";
+}
+
+function outcomeClass(m: SubmissionMatchDetail): string {
+  if (m.status === "failed") return "text-destructive";
+  if (m.is_draw) return "text-muted-foreground";
+  if (m.winner_player === 1) return "text-green-500";
+  if (m.winner_player === 2) return "text-destructive";
+  return "text-muted-foreground";
+}
+
+function scoreColor(score: number): string {
+  if (score >= 80) return "text-green-500";
+  if (score >= 50) return "text-yellow-500";
+  return "text-destructive";
+}
 
 export default function SubmissionDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const matchId = params.id as string;
+  const submissionId = params.id as string;
 
-  const [match, setMatch] = useState<MatchDetail | null>(null);
-  const [codeData, setCodeData] = useState<CodeResponse | null>(null);
-  const [codeOpen, setCodeOpen] = useState(false);
-  const [logsOpen, setLogsOpen] = useState(true);
+  const [submission, setSubmission] = useState<SubmissionDetail | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -31,15 +51,15 @@ export default function SubmissionDetailPage() {
 
     async function poll() {
       try {
-        const data = await getMatch(matchId);
+        const data = await getSubmission(submissionId);
         if (cancelled) return;
-        setMatch(data);
+        setSubmission(data);
         if (data.status === "pending" || data.status === "running") {
-          setTimeout(poll, 1500);
+          setTimeout(poll, 2000);
         }
       } catch (e) {
         if (!cancelled)
-          setError(e instanceof Error ? e.message : "Failed to load match");
+          setError(e instanceof Error ? e.message : "Failed to load");
       }
     }
 
@@ -47,200 +67,127 @@ export default function SubmissionDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [matchId]);
-
-  async function loadCode() {
-    if (codeData) return;
-    try {
-      const data = await getMatchCode(matchId);
-      setCodeData(data);
-    } catch {
-      // ignore
-    }
-  }
+  }, [submissionId]);
 
   if (error) {
     return (
       <div className="p-6">
         <p className="text-destructive text-sm">{error}</p>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-4"
-          onClick={() => router.push("/submissions")}
-        >
+        <Button variant="ghost" size="sm" className="mt-4" onClick={() => router.push("/submissions")}>
           ← Back
         </Button>
       </div>
     );
   }
 
-  if (!match) {
-    return (
-      <div className="p-6 text-muted-foreground animate-pulse text-sm">
-        Loading…
-      </div>
-    );
+  if (!submission) {
+    return <div className="p-6 text-muted-foreground animate-pulse text-sm">Loading…</div>;
   }
 
-  const { result, status } = match;
-
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/submissions")}
-        >
+        <Button variant="ghost" size="sm" onClick={() => router.push("/submissions")}>
           <ChevronLeft className="size-4 mr-1" /> Submissions
         </Button>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold text-foreground">Match</h1>
-        <code className="text-sm text-muted-foreground font-mono">
-          #{match.match_id}
-        </code>
-        <StatusBadge status={status} />
+        <h1 className="text-2xl font-bold text-foreground capitalize">{submission.game}</h1>
+        <StatusBadge status={submission.status} />
+        <span className="text-sm text-muted-foreground">{submission.lang}</span>
       </div>
 
-      {/* Meta + Board */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Details</CardTitle>
+      {/* Score + stats cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <Card className="text-center">
+          <CardHeader className="pb-1 pt-4">
+            <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">Score</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <Row label="Game" value={match.game} capitalize />
-            <Row label="Language" value={match.lang} />
-            <Row label="You played as" value="X (first)" />
-            {result && (
-              <>
-                <Row label="Turns" value={String(result.turn)} />
-                <Row label="Reason" value={result.reason.replace("_", " ")} />
-                <Row
-                  label="Outcome"
-                  value={
-                    result.is_draw
-                      ? "Draw"
-                      : result.winner_player === 1
-                        ? "Won"
-                        : "Lost"
-                  }
-                  highlight={
-                    result.is_draw
-                      ? "neutral"
-                      : result.winner_player === 1
-                        ? "win"
-                        : "loss"
-                  }
-                />
-              </>
+          <CardContent className="pb-4">
+            {submission.status === "completed" && submission.score !== null ? (
+              <span className={`text-3xl font-bold ${scoreColor(submission.score)}`}>
+                {submission.score.toFixed(1)}
+              </span>
+            ) : (
+              <span className="text-2xl text-muted-foreground">—</span>
             )}
           </CardContent>
         </Card>
-
-        {result && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Final Board</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Board board={result.board} />
-              <div className="flex gap-4 text-xs text-muted-foreground">
-                <span className="text-primary font-semibold">X — You</span>
-                <span className="text-destructive font-semibold">
-                  O — Opponent
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <Card className="text-center">
+          <CardHeader className="pb-1 pt-4">
+            <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">Wins</CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <span className="text-3xl font-bold text-green-500">{submission.wins}</span>
+          </CardContent>
+        </Card>
+        <Card className="text-center">
+          <CardHeader className="pb-1 pt-4">
+            <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">Draws</CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <span className="text-3xl font-bold text-muted-foreground">{submission.draws}</span>
+          </CardContent>
+        </Card>
+        <Card className="text-center">
+          <CardHeader className="pb-1 pt-4">
+            <CardTitle className="text-xs uppercase tracking-wide text-muted-foreground">Losses</CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <span className="text-3xl font-bold text-destructive">{submission.losses}</span>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Error */}
-      {status === "failed" && match.error && (
-        <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
-          {match.error}
-        </div>
-      )}
+      <p className="text-sm text-muted-foreground">
+        {submission.matches_completed} / {submission.total_matches} matches completed
+      </p>
 
-      {/* Bot logs */}
-      {result?.bot_logs?.length ? (
-        <Collapsible open={logsOpen} onOpenChange={setLogsOpen}>
-          <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
-            <ChevronDown
-              className={`size-4 transition-transform ${logsOpen ? "rotate-180" : ""}`}
-            />
-            Bot Logs
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="mt-3 space-y-3">
-              {result.bot_logs.map((log, i) => (
-                <div key={i}>
-                  <p className="text-xs text-muted-foreground mb-1">
-                    {i === 0 ? "Your bot" : "Opponent"} output
-                  </p>
-                  <pre className="text-xs bg-muted rounded-lg p-3 overflow-auto max-h-48 font-mono whitespace-pre-wrap">
-                    {log || "(no output)"}
-                  </pre>
-                </div>
-              ))}
+      {/* Matches grouped by difficulty */}
+      <div className="space-y-4">
+        {DIFFICULTIES.map((diff) => {
+          const matches = submission.matches.filter((m) => m.opponent === diff);
+          if (!matches.length) return null;
+          return (
+            <div key={diff} className="rounded-lg border border-border overflow-hidden">
+              <div className="px-4 py-2 bg-muted/40 border-b border-border">
+                <span className="text-sm font-semibold capitalize">{diff}</span>
+                <span className="text-xs text-muted-foreground ml-2">
+                  {matches.filter((m) => m.winner_player === 1).length}W ·{" "}
+                  {matches.filter((m) => m.is_draw).length}D ·{" "}
+                  {matches.filter((m) => m.winner_player === 2).length}L
+                </span>
+              </div>
+              <div className="divide-y divide-border">
+                {matches.map((m) => (
+                  <Link
+                    key={m.match_id}
+                    href={`/test-runs/${m.match_id}?from=/submissions/${submissionId}`}
+                    className="flex items-center gap-4 px-4 py-2.5 text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    <StatusBadge status={m.status} />
+                    <span className={`font-medium ${outcomeClass(m)}`}>
+                      {outcomeLabel(m)}
+                    </span>
+                    {m.reason && m.status === "completed" && (
+                      <span className="text-xs text-muted-foreground capitalize">
+                        {m.reason.replace("_", " ")}
+                      </span>
+                    )}
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {matchScore(m)} pts
+                    </span>
+                    <span className="ml-auto font-mono text-xs text-muted-foreground">
+                      {m.match_id.slice(0, 8)} →
+                    </span>
+                  </Link>
+                ))}
+              </div>
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-      ) : null}
-
-      {/* View code */}
-      <Collapsible
-        open={codeOpen}
-        onOpenChange={(open) => {
-          setCodeOpen(open);
-          if (open) loadCode();
-        }}
-      >
-        <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
-          <ChevronDown
-            className={`size-4 transition-transform ${codeOpen ? "rotate-180" : ""}`}
-          />
-          View Submitted Code
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <pre className="mt-3 text-xs bg-muted rounded-lg p-3 overflow-auto max-h-96 font-mono whitespace-pre-wrap">
-            {codeData ? codeData.code : "Loading…"}
-          </pre>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
-  );
-}
-
-function Row({
-  label,
-  value,
-  capitalize,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  capitalize?: boolean;
-  highlight?: "win" | "loss" | "neutral";
-}) {
-  const valueClass =
-    highlight === "win"
-      ? "text-primary font-semibold"
-      : highlight === "loss"
-        ? "text-destructive font-semibold"
-        : "text-foreground";
-
-  return (
-    <div className="flex justify-between">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={`${valueClass} ${capitalize ? "capitalize" : ""}`}>
-        {value}
-      </span>
+          );
+        })}
+      </div>
     </div>
   );
 }
