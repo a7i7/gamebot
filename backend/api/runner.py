@@ -48,8 +48,14 @@ async def run_match(
 
         opp = get_opponent(game_name, opponent)
         game = GAME_MAP[game_name]()
-        user_config     = {"image": LANG_IMAGE_MAP[user_lang],      "file": user_file, "protocol_on_stderr": user_lang == "java"}
-        opponent_config = {"image": LANG_IMAGE_MAP[opp["lang"]], "file": opp["file"]}
+
+        opp_ext = LANG_EXT[opp["lang"]]
+        opp_filename = f"GameBot{opp_ext}" if opp["lang"] == "java" else f"opp{opp_ext}"
+        opp_file = os.path.join(tmpdir, opp_filename)
+        shutil.copy(opp["file"], opp_file)
+
+        user_config     = {"image": LANG_IMAGE_MAP[user_lang],   "file": user_file, "protocol_on_stderr": user_lang == "java"}
+        opponent_config = {"image": LANG_IMAGE_MAP[opp["lang"]], "file": opp_file}
 
         result = await Referee(game, user_config, opponent_config).run()
 
