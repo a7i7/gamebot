@@ -3,18 +3,21 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 
 
-class MatchRequest(BaseModel):
+# --- Test run schemas ---
+
+class TestRunRequest(BaseModel):
     game: Literal["tictactoe"]
     code: str
     lang: Literal["python", "javascript", "java", "cpp"]
     opponent: Literal["easy", "medium", "hard"] = "easy"
 
 
-class MatchSummary(BaseModel):
+class TestRunSummary(BaseModel):
     match_id: str
     status: str
     game: str
     lang: str
+    opponent: Optional[str]
     submitted_at: datetime
 
 
@@ -28,7 +31,7 @@ class MatchResultSchema(BaseModel):
     bot_logs: list[str]
 
 
-class MatchResponse(BaseModel):
+class TestRunResponse(BaseModel):
     match_id: str
     status: str
     game: str
@@ -42,7 +45,52 @@ class CodeResponse(BaseModel):
     code: str
 
 
-# Auth schemas
+# --- Scored submission schemas ---
+
+class SubmissionRequest(BaseModel):
+    game: Literal["tictactoe"]
+    code: str
+    lang: Literal["python", "javascript", "java", "cpp"]
+
+
+class SubmissionSummary(BaseModel):
+    submission_id: str
+    status: str
+    game: str
+    lang: str
+    score: Optional[float]
+    matches_completed: int
+    total_matches: int
+    created_at: datetime
+
+
+class SubmissionMatchDetail(BaseModel):
+    match_id: str
+    opponent: Optional[str]
+    status: str
+    winner_player: Optional[int]
+    is_draw: Optional[bool]
+    reason: Optional[str]
+    points_earned: Optional[float]
+
+
+class SubmissionResponse(BaseModel):
+    submission_id: str
+    status: str
+    game: str
+    lang: str
+    score: Optional[float]
+    wins: int
+    draws: int
+    losses: int
+    matches_completed: int
+    total_matches: int
+    matches: list[SubmissionMatchDetail]
+    created_at: datetime
+    completed_at: Optional[datetime]
+
+
+# --- Auth schemas ---
 
 class SignupRequest(BaseModel):
     email: str

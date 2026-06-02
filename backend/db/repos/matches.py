@@ -12,8 +12,15 @@ async def create_match(
     session: AsyncSession,
     game: str,
     player1_submission_id: uuid.UUID,
+    opponent: str | None = None,
+    scored_submission_id: uuid.UUID | None = None,
 ) -> Match:
-    match = Match(game=game, player1_submission_id=player1_submission_id)
+    match = Match(
+        game=game,
+        player1_submission_id=player1_submission_id,
+        opponent=opponent,
+        scored_submission_id=scored_submission_id,
+    )
     session.add(match)
     await session.commit()
     await session.refresh(match)
@@ -48,6 +55,7 @@ async def update_match_result(
     final_board: list | None = None,
     bot_logs: list | None = None,
     error: str | None = None,
+    points_earned: float | None = None,
 ) -> None:
     match = await session.get(Match, match_id)
     if not match:
@@ -60,8 +68,19 @@ async def update_match_result(
     match.final_board = final_board
     match.bot_logs = bot_logs
     match.error = error
+    match.points_earned = points_earned
     match.completed_at = datetime.now(timezone.utc)
     await session.commit()
+
+
+async def list_for_scored_submission(
+    session: AsyncSession,
+    scored_submission_id: uuid.UUID,
+) -> list[Match]:
+    result = await session.execute(
+        select(Match).where(Match.scored_submission_id == scored_submission_id)
+    )
+    return list(result.scalars().all())
 
 
 async def list_for_user(session: AsyncSession, user_id: uuid.UUID) -> list[Match]:
