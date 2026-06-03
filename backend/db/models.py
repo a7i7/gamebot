@@ -82,6 +82,7 @@ class Match(Base):
     opponent: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(Text, nullable=False, default="pending")
     winner_player: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    user_player: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     is_draw: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     turns: Mapped[int | None] = mapped_column(Integer, nullable=True)

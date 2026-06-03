@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import random
 import shutil
 import tempfile
 import uuid
@@ -57,20 +58,27 @@ async def run_match(
         user_config     = {"image": LANG_IMAGE_MAP[user_lang],   "file": user_file, "protocol_on_stderr": user_lang == "java"}
         opponent_config = {"image": LANG_IMAGE_MAP[opp["lang"]], "file": opp_file}
 
-        result = await Referee(game, user_config, opponent_config).run()
+        user_is_p1 = random.choice([True, False])
+        user_player = 1 if user_is_p1 else 2
+        p1_config, p2_config = (user_config, opponent_config) if user_is_p1 else (opponent_config, user_config)
+        result = await Referee(game, p1_config, p2_config).run()
+
+        user_won = result.winner_player == user_player
+        remapped_winner = 1 if user_won else (2 if result.winner_player is not None else None)
 
         async with AsyncSessionLocal() as session:
             await matches_repo.update_match_result(
                 session,
                 match_id,
                 status="completed",
-                winner_player=result.winner_player,
+                winner_player=remapped_winner,
+                user_player=user_player,
                 is_draw=result.is_draw,
                 reason=result.reason,
                 turns=result.turn,
                 final_board=result.board,
                 bot_logs=result.bot_logs,
-                points_earned=compute_match_points(opponent, result.winner_player, result.is_draw),
+                points_earned=compute_match_points(opponent, remapped_winner, result.is_draw),
             )
 
     except Exception as exc:

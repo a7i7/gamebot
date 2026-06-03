@@ -19,6 +19,7 @@ export interface TestRunSummary {
 export interface MatchResult {
   winner_player: number | null;
   loser_player: number | null;
+  user_player: number | null;
   is_draw: boolean;
   reason: string;
   turn: number;

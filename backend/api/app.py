@@ -68,6 +68,7 @@ def _to_test_run_response(match) -> TestRunResponse:
         result_schema = MatchResultSchema(
             winner_player=match.winner_player,
             loser_player=_loser(match.winner_player),
+            user_player=match.user_player,
             is_draw=match.is_draw or False,
             reason=match.reason or "",
             turn=match.turns or 0,

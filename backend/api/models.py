@@ -28,6 +28,7 @@ class TestRunSummary(BaseModel):
 class MatchResultSchema(BaseModel):
     winner_player: Optional[int]
     loser_player: Optional[int]
+    user_player: Optional[int]
     is_draw: bool
     reason: str
     turn: int

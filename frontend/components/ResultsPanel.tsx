@@ -119,9 +119,11 @@ export function ResultsPanel({ matchId }: ResultsPanelProps) {
             </p>
             <Board board={result.board} />
             <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-              <span className="text-primary font-semibold">X — You</span>
-              <span className="text-destructive font-semibold">
-                O — Opponent
+              <span className={result.user_player === 1 ? "text-primary font-semibold" : "text-destructive font-semibold"}>
+                {result.user_player === 1 ? "X" : "O"} — You
+              </span>
+              <span className={result.user_player === 1 ? "text-destructive font-semibold" : "text-primary font-semibold"}>
+                {result.user_player === 1 ? "O" : "X"} — Opponent
               </span>
             </div>
           </div>

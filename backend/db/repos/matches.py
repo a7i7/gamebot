@@ -49,6 +49,7 @@ async def update_match_result(
     *,
     status: str,
     winner_player: int | None = None,
+    user_player: int | None = None,
     is_draw: bool | None = None,
     reason: str | None = None,
     turns: int | None = None,
@@ -62,6 +63,7 @@ async def update_match_result(
         return
     match.status = status
     match.winner_player = winner_player
+    match.user_player = user_player
     match.is_draw = is_draw
     match.reason = reason
     match.turns = turns
