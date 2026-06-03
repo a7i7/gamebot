@@ -21,7 +21,7 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
   return (
     <aside
       className={cn(
-        "hidden md:flex flex-col shrink-0 border-r border-border bg-sidebar min-h-screen pt-4 pb-8 transition-[width] duration-200",
+        "hidden md:flex flex-col shrink-0 border-r border-border bg-sidebar pt-4 pb-8 transition-[width] duration-200",
         collapsed ? "w-16 px-2" : "w-56 px-3"
       )}
     >
