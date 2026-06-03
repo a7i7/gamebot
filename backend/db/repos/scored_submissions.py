@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -82,6 +82,37 @@ async def list_for_user(
         .order_by(ScoredSubmission.created_at.desc())
     )
     return list(result.scalars().unique().all())
+
+
+async def get_leaderboard(
+    session: AsyncSession,
+    game: str,
+    limit: int = 20,
+) -> list[dict]:
+    # DISTINCT ON picks the highest-scoring submission per user efficiently.
+    # The outer query then orders those per-user bests by score descending.
+    sql = text("""
+        SELECT username, score, wins, draws, losses
+        FROM (
+            SELECT DISTINCT ON (s.user_id)
+                u.username,
+                ss.score,
+                ss.wins,
+                ss.draws,
+                ss.losses
+            FROM scored_submissions ss
+            JOIN submissions s ON ss.submission_id = s.id
+            JOIN users u ON s.user_id = u.id
+            WHERE ss.game = :game
+              AND ss.status = 'completed'
+              AND ss.score IS NOT NULL
+            ORDER BY s.user_id, ss.score DESC
+        ) best
+        ORDER BY score DESC
+        LIMIT :limit
+    """)
+    rows = await session.execute(sql, {"game": game, "limit": limit})
+    return [dict(r) for r in rows.mappings().all()]
 
 
 async def update_status(

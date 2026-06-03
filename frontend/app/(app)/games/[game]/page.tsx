@@ -10,7 +10,6 @@ import {
 } from "react-resizable-panels";
 import { submitTestRun, createSubmission } from "@/lib/api";
 import type { Lang } from "@/lib/api";
-import Link from "next/link";
 import { GameInfoPanel } from "@/components/GameInfoPanel";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { Button } from "@/components/ui/button";
@@ -27,223 +26,200 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 });
 
 const STARTER_CODE: Record<Lang, string> = {
-  python: `class GameBot:
-    """
-    Your bot implementation for TicTacToe.
+  python: `# ── Types injected by the framework (no import needed) ───────────────────
+#
+# Cell (IntEnum)
+#   Cell.EMPTY = 0    unoccupied
+#   Cell.P1    = 1    player 1 (X)
+#   Cell.P2    = 2    player 2 (O)
+#
+# Move(row, col)
+#   move.row          int  row index, 0 = top,  2 = bottom
+#   move.col          int  col index, 0 = left, 2 = right
+#   r, c = move       Move is iterable
+#
+# TicTacToeState  (passed to makeMove every turn)
+#   state.board         tuple[tuple[Cell]]  3x3 grid
+#                       state.board[row][col] returns a Cell value
+#   state.player        int   your player ID — 1 (X) or 2 (O)
+#   state.turn          int   1-indexed move count (1 = you move first)
+#   state.last_move     Move | None   opponent's last move; None on turn 1
+#   state.legal_moves   tuple[Move]   every valid move; you must return one
+#
+# Board cell checks:
+#   state.board[r][c] == Cell.EMPTY          → free
+#   state.board[r][c] == state.player        → your mark
+#   state.board[r][c] != Cell.EMPTY and
+#   state.board[r][c] != state.player        → opponent's mark
+# ─────────────────────────────────────────────────────────────────────────
 
-    The game framework passes a TicTacToeState object to makeMove() containing:
-      - state.board: 3x3 tuple of Cell values (0=EMPTY, 1=P1, 2=P2)
-      - state.player: your player ID (1 or 2)
-      - state.turn: how many moves have been played (1-indexed)
-      - state.last_move: opponent's last Move, or None on your first turn
-      - state.legal_moves: tuple of valid Move(row,col) objects you can make
+import random
 
-    IMPORTANT: Any instance variables you store in __init__ will be available
-    throughout the entire game. Each call to makeMove() can access and modify
-    them to track game progress, history, or strategy.
-    """
-
+class GameBot:
     def __init__(self, player_id: int):
-        """Initialize your bot with your player ID."""
-        self.player_id = player_id
-        # You can store any state here - it persists across all makeMove() calls
-        self.my_moves = []  # Track moves you've made
-        self.opponent_moves = []  # Track opponent's moves
+        self.player_id = player_id  # 1 or 2, constant for the whole game
 
-    def makeMove(self, state) -> list:
-        """
-        Decide your next move given the game state.
+    def makeMove(self, state) -> "Move":
+        # Take center if free
+        if state.board[1][1] == Cell.EMPTY:
+            return Move(1, 1)
 
-        Args:
-            state: TicTacToeState object with board and legal moves
-
-        Returns:
-            A Move(row, col) from state.legal_moves indicating where to place your mark.
-            Must return a valid move or the game will disqualify you.
-
-        Example:
-            # Access previously stored state
-            if len(self.opponent_moves) > 0:
-                last_opp_move = self.opponent_moves[-1]
-
-            # Check if you own the center
-            if state.board[1][1] == state.player:
-                # You already have the center
-
-            # Make a random move and store it
-            import random
-            move = random.choice(state.legal_moves)
-            self.my_moves.append(move)
-            return move
-        """
-        import random
-        # Track opponent's last move if it exists
+        # React to opponent's last move
         if state.last_move:
-            self.opponent_moves.append(state.last_move)
+            opp_row, opp_col = state.last_move  # unpack row and col
 
-        # This simple bot picks a random legal move
-        move = random.choice(state.legal_moves)
-        self.my_moves.append(move)
-        return move
+        # Scan the board manually
+        for r in range(3):
+            for c in range(3):
+                if state.board[r][c] == Cell.EMPTY:
+                    pass  # free cell at (r, c)
+
+        # Pick a random legal move
+        return random.choice(state.legal_moves)
 `,
-  javascript: `/**
- * Your bot implementation for TicTacToe.
- *
- * The game framework passes a TicTacToeState object to makeMove() containing:
- *   - state.board: 3x3 array of cell values (0=EMPTY, 1=P1, 2=P2)
- *   - state.player: your player ID (1 or 2)
- *   - state.turn: how many moves have been played (1-indexed)
- *   - state.lastMove: opponent's last Move { row, col }, or null on your first turn
- *   - state.legalMoves: array of valid Move objects you can make
- *
- * IMPORTANT: Any instance properties you store in the constructor will be
- * available throughout the entire game. Each call to makeMove() can access
- * and modify them to track game progress, history, or strategy.
- */
+  javascript: `// ── Types injected by the framework (available as globals) ───────────────
+//
+// Cell (object)
+//   Cell.EMPTY = 0    unoccupied
+//   Cell.P1    = 1    player 1 (X)
+//   Cell.P2    = 2    player 2 (O)
+//
+// Move
+//   move.row          number  row index, 0 = top,  2 = bottom
+//   move.col          number  col index, 0 = left, 2 = right
+//   move.toArray()    returns [row, col]
+//   new Move(row, col) constructs a move (must still be in legalMoves)
+//
+// TicTacToeState  (passed to makeMove every turn)
+//   state.board         number[][]  3x3 grid
+//                       state.board[row][col] returns 0, 1, or 2
+//   state.player        number  your player ID — 1 (X) or 2 (O)
+//   state.turn          number  1-indexed move count (1 = you move first)
+//   state.lastMove      Move | null   opponent's last move; null on turn 1
+//   state.legalMoves    Move[]        every valid move; you must return one
+//
+// Board cell checks:
+//   state.board[r][c] === Cell.EMPTY             → free
+//   state.board[r][c] === state.player           → your mark
+//   state.board[r][c] !== Cell.EMPTY &&
+//   state.board[r][c] !== state.player           → opponent's mark
+// ─────────────────────────────────────────────────────────────────────────
+
 export class GameBot {
-  /**
-   * Initialize your bot with your player ID.
-   * @param {number} playerId - Your player ID (1 or 2)
-   */
   constructor(playerId) {
-    this.playerId = playerId;
-    // You can store any state here - it persists across all makeMove() calls
-    this.myMoves = [];      // Track moves you've made
-    this.opponentMoves = []; // Track opponent's moves
+    this.playerId = playerId; // 1 or 2, constant for the whole game
   }
 
-  /**
-   * Decide your next move given the game state.
-   *
-   * @param {TicTacToeState} state - Current game state with board and legal moves
-   * @returns {Move} A Move { row, col } from state.legalMoves.
-   *                 Must return a valid move or the game will disqualify you.
-   *
-   * Example:
-   *   // Access previously stored state
-   *   if (this.opponentMoves.length > 0) {
-   *       const lastOppMove = this.opponentMoves[this.opponentMoves.length - 1];
-   *   }
-   *
-   *   // Check if center is empty
-   *   if (state.board[1][1] === 0) {
-   *     return new Move(1, 1);  // Take the center
-   *   }
-   *
-   *   // Make a random move and store it
-   *   const moves = state.legalMoves;
-   *   const move = moves[Math.floor(Math.random() * moves.length)];
-   *   this.myMoves.push(move);
-   *   return move;
-   */
   makeMove(state) {
-    // Track opponent's last move if it exists
-    if (state.lastMove) {
-      this.opponentMoves.push(state.lastMove);
+    // Take center if free
+    if (state.board[1][1] === Cell.EMPTY) {
+      return new Move(1, 1);
     }
 
-    // This simple bot picks a random legal move from available options
+    // React to opponent's last move
+    if (state.lastMove) {
+      const { row, col } = state.lastMove;
+    }
+
+    // Scan the board manually
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        if (state.board[r][c] === Cell.EMPTY) {
+          // free cell at (r, c)
+        }
+      }
+    }
+
+    // Pick a random legal move
     const moves = state.legalMoves;
-    const move = moves[Math.floor(Math.random() * moves.length)];
-    this.myMoves.push(move);
-    return move;
+    return moves[Math.floor(Math.random() * moves.length)];
   }
 }
 `,
-  java: `import java.util.ArrayList;
-import java.util.List;
+  java: `// ── Available types ───────────────────────────────────────────────────────
+//
+// Cell  (utility constants)
+//   Cell.EMPTY = 0    unoccupied
+//   Cell.P1    = 1    player 1 (X)
+//   Cell.P2    = 2    player 2 (O)
+//
+// Move
+//   move.row          int  row index, 0 = top,  2 = bottom
+//   move.col          int  col index, 0 = left, 2 = right
+//   new Move(row, col) constructs a move
+//
+// TicTacToeState  (passed to makeMove every turn)
+//   state.board         int[3][3]    state.board[row][col] returns 0, 1, or 2
+//   state.player        int          your player ID — 1 (X) or 2 (O)
+//   state.turn          int          1-indexed move count (1 = you move first)
+//   state.lastMove      Move | null  opponent's last move; null on turn 1
+//   state.legalMoves    List<Move>   every valid move; you must return one
+//
+// Board cell checks:
+//   state.board[r][c] == Cell.EMPTY          → free
+//   state.board[r][c] == state.player        → your mark
+//   state.board[r][c] != Cell.EMPTY &&
+//   state.board[r][c] != state.player        → opponent's mark
+// ─────────────────────────────────────────────────────────────────────────
 
-/**
- * Your bot implementation for TicTacToe.
- *
- * The game framework passes a TicTacToeState object to makeMove() containing:
- *   - state.board: int[3][3] array (0=EMPTY, 1=P1, 2=P2)
- *   - state.player: your player ID (1 or 2)
- *   - state.turn: how many moves have been played (1-indexed)
- *   - state.lastMove: opponent's last Move, or null on your first turn
- *   - state.legalMoves: List<Move> of valid moves you can make
- *
- * Cell values:
- *   0 = EMPTY (unoccupied)
- *   1 = P1 (player 1's mark)
- *   2 = P2 (player 2's mark)
- *
- * IMPORTANT: Any instance variables you declare will be available throughout
- * the entire game. Each call to makeMove() can access and modify them to
- * track game progress, history, or strategy.
- */
 public class GameBot {
-    private int playerId;
-    // You can store any state here - it persists across all makeMove() calls
-    private List<Move> myMoves = new ArrayList<>();      // Track moves you've made
-    private List<Move> opponentMoves = new ArrayList<>(); // Track opponent's moves
+    private final int playerId;
 
-    /**
-     * Initialize your bot with your player ID.
-     * @param playerId Your player ID (1 or 2)
-     */
     public GameBot(int playerId) {
-        this.playerId = playerId;
+        this.playerId = playerId; // 1 or 2, constant for the whole game
     }
 
-    /**
-     * Decide your next move given the game state.
-     *
-     * @param state TicTacToeState containing the board and legal moves
-     * @return A Move from state.legalMoves indicating where to place your mark.
-     *         Must return a valid move or the game will disqualify you.
-     *
-     * Example:
-     *   // Access previously stored state
-     *   if (!opponentMoves.isEmpty()) {
-     *       Move lastOppMove = opponentMoves.get(opponentMoves.size() - 1);
-     *   }
-     *
-     *   // Check if center is empty
-     *   if (state.board[1][1] == 0) {
-     *       return new Move(1, 1);  // Take the center
-     *   }
-     *
-     *   // Check if you own the center
-     *   if (state.board[1][1] == state.player) {
-     *       // You already have the center
-     *   }
-     *
-     *   // Make a move and store it
-     *   Move move = state.legalMoves.get(0);
-     *   myMoves.add(move);
-     *   return move;
-     */
     public Move makeMove(TicTacToeState state) {
-        // Track opponent's last move if it exists
-        if (state.lastMove != null) {
-            opponentMoves.add(state.lastMove);
+        // Take center if free
+        if (state.board[1][1] == Cell.EMPTY) {
+            return new Move(1, 1);
         }
 
-        // This simple bot picks a random legal move
-        Move move = state.legalMoves.get((int)(Math.random() * state.legalMoves.size()));
-        myMoves.add(move);
-        return move;
+        // React to opponent's last move
+        if (state.lastMove != null) {
+            int oppRow = state.lastMove.row;
+            int oppCol = state.lastMove.col;
+        }
+
+        // Scan the board manually
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 3; c++) {
+                if (state.board[r][c] == Cell.EMPTY) {
+                    // free cell at (r, c)
+                }
+            }
+        }
+
+        // Pick the first legal move
+        return state.legalMoves.get(0);
     }
 }
 `,
-  cpp: `/**
- * Your bot implementation for TicTacToe.
- *
- * Parameters to makeMove():
- *   - board: reference to 3x3 grid (0=EMPTY, 1=P1, 2=P2)
- *   - legalMoves: reference to vector of valid [row, col] moves
- *   - playerId: your player ID (1 or 2)
- *   - turn: how many moves have been played (1-indexed)
- *   - lastMove: vector [row, col] of opponent's last move, empty if first turn
- *
- * Return: vector [row, col] indicating where to place your mark.
- *         Must be one of the legalMoves or the game will disqualify you.
- *
- * IMPORTANT: Any member variables you declare will be available throughout
- * the entire game. Each call to makeMove() can access and modify them to
- * track game progress, history, or strategy.
- */
+  cpp: `// ── Available types (defined in tictactoe.h, included automatically) ──────
+//
+// Move  (struct)
+//   move.row          int  row index, 0 = top,  2 = bottom
+//   move.col          int  col index, 0 = left, 2 = right
+//   Move(row, col)    constructs a move
+//
+// TicTacToeState  (passed to makeMove every turn)
+//   state.board         vector<vector<int>>  3x3 grid
+//                       state.board[row][col] returns 0, 1, or 2
+//   state.player        int                  your player ID — 1 (X) or 2 (O)
+//   state.turn          int                  1-indexed move count (1 = you move first)
+//   state.lastMove      optional<Move>       opponent's last move; empty on turn 1
+//   state.legalMoves    vector<Move>         every valid move; you must return one
+//
+// Cell values (raw ints, no enum):
+//   0 = empty    1 = player 1 (X)    2 = player 2 (O)
+//
+// Board cell checks:
+//   state.board[r][c] == 0                   → free
+//   state.board[r][c] == state.player        → your mark
+//   state.board[r][c] != 0 &&
+//   state.board[r][c] != state.player        → opponent's mark
+// ─────────────────────────────────────────────────────────────────────────
+
 #include <vector>
 #include <cstdlib>
 using namespace std;
@@ -251,43 +227,33 @@ using namespace std;
 class GameBot {
 public:
     int playerId;
-    // You can store any state here - it persists across all makeMove() calls
-    vector<vector<int>> myMoves;      // Track moves you've made
-    vector<vector<int>> opponentMoves; // Track opponent's moves
 
-    GameBot(int id) : playerId(id) {}
+    GameBot(int id) : playerId(id) {} // playerId is 1 or 2, constant for the whole game
 
-    /**
-     * Decide your next move given the game state.
-     *
-     * Example:
-     *   // Access previously stored state
-     *   if (!opponentMoves.empty()) {
-     *       auto lastOppMove = opponentMoves.back();
-     *   }
-     *
-     *   // Check if center is empty
-     *   if (board[1][1] == 0) {
-     *       return {1, 1};  // Take the center
-     *   }
-     *
-     *   // Check if you own the center
-     *   if (board[1][1] == playerId) {
-     *       // You already have the center
-     *   }
-     *
-     *   // Make a move and store it
-     *   auto move = legalMoves[0];
-     *   myMoves.push_back(move);
-     *   return move;
-     */
-    vector<int> makeMove(vector<vector<int>>& board,
-                         vector<vector<int>>& legalMoves) {
-        // This simple bot picks a random legal move
-        int idx = rand() % legalMoves.size();
-        auto move = legalMoves[idx];
-        myMoves.push_back(move);
-        return move;
+    Move makeMove(const TicTacToeState& state) {
+        // Take center if free
+        if (state.board[1][1] == 0) {
+            return Move(1, 1);
+        }
+
+        // React to opponent's last move
+        if (state.lastMove.has_value()) {
+            int oppRow = state.lastMove->row;
+            int oppCol = state.lastMove->col;
+        }
+
+        // Scan the board manually
+        for (int r = 0; r < 3; r++) {
+            for (int c = 0; c < 3; c++) {
+                if (state.board[r][c] == 0) {
+                    // free cell at (r, c)
+                }
+            }
+        }
+
+        // Pick a random legal move
+        int idx = rand() % state.legalMoves.size();
+        return state.legalMoves[idx];
     }
 };
 `,
@@ -318,6 +284,8 @@ export default function GameEditorPage() {
   const [testRunMatchId, setTestRunMatchId] = useState<string | null>(null);
   const [submissionStarted, setSubmissionStarted] = useState(false);
   const [error, setError] = useState("");
+  const [infoTab, setInfoTab] = useState<"statement" | "submissions" | "leaderboard">("statement");
+  const [submissionsRefreshKey, setSubmissionsRefreshKey] = useState(0);
 
   function handleLangChange(newLang: Lang) {
     setLang(newLang);
@@ -358,26 +326,16 @@ export default function GameEditorPage() {
     <div className="h-[calc(100vh-3.5rem)] flex flex-col">
       {/* Toolbar */}
       <div className="flex items-center gap-3 px-4 py-2 border-b border-border bg-background shrink-0">
-        <Select value={lang} onValueChange={(v) => handleLangChange(v as Lang)}>
-          <SelectTrigger className="w-36 h-8 text-sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.keys(LANG_LABELS) as Lang[]).map((l) => (
-              <SelectItem key={l} value={l}>
-                {LANG_LABELS[l]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
         <div className="ml-auto flex items-center gap-2">
           {error && <span className="text-xs text-destructive">{error}</span>}
           <div className="flex items-center gap-1 border border-border rounded-md px-2 py-1">
             <span className="text-xs text-muted-foreground mr-1">vs</span>
             <Select value={opponent} onValueChange={(v) => v && setOpponent(v)}>
               <SelectTrigger className="w-24 h-6 text-xs border-0 p-0 focus:ring-0">
-                <SelectValue />
+                <SelectValue>
+                  {opponent.charAt(0).toLocaleUpperCase() +
+                    opponent.substring(1).toLocaleLowerCase()}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="easy">Easy</SelectItem>
@@ -395,26 +353,117 @@ export default function GameEditorPage() {
               {submitting ? "Running…" : "Test Run"}
             </Button>
           </div>
-          <Button
-            size="sm"
-            onClick={handleSubmit}
-            disabled={submitting}
-          >
+          <Button size="sm" onClick={handleSubmit} disabled={submitting}>
             {submitting ? "Submitting…" : "Submit →"}
           </Button>
         </div>
       </div>
 
       {/* Panels */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden p-3">
         {/* Desktop: 3 horizontal panels */}
         <div className="hidden md:block h-full">
           <PanelGroup orientation="horizontal">
             <Panel defaultSize={25} minSize={15}>
-              <GameInfoPanel game={game} />
+              <GameInfoPanel
+                game={game}
+                activeTab={infoTab}
+                onTabChange={setInfoTab}
+                submissionsRefreshKey={submissionsRefreshKey}
+              />
             </Panel>
             <PanelSeparator className="w-1 bg-border hover:bg-primary/40 transition-colors cursor-col-resize" />
             <Panel defaultSize={45} minSize={25}>
+              <div className="flex flex-col h-full">
+                <div className="flex items-center px-3 py-1.5 border-b border-border bg-background shrink-0">
+                  <Select value={lang} onValueChange={(v) => handleLangChange(v as Lang)}>
+                    <SelectTrigger className="w-32 h-7 text-xs">
+                      <SelectValue>{LANG_LABELS[lang]}</SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Object.keys(LANG_LABELS) as Lang[]).map((l) => (
+                        <SelectItem key={l} value={l}>
+                          {LANG_LABELS[l]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1">
+                  <MonacoEditor
+                    height="100%"
+                    language={MONACO_LANG[lang]}
+                    value={code}
+                    onChange={(v) => setCode(v ?? "")}
+                    theme="vs-dark"
+                    options={{
+                      fontSize: 13,
+                      minimap: { enabled: false },
+                      scrollBeyondLastLine: false,
+                      padding: { top: 12 },
+                      fontFamily: "IBM Plex Mono, monospace",
+                    }}
+                  />
+                </div>
+              </div>
+            </Panel>
+            <PanelSeparator className="w-1 bg-border hover:bg-primary/40 transition-colors cursor-col-resize" />
+            <Panel defaultSize={30} minSize={20}>
+              {submissionStarted ? (
+                <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
+                  <span className="text-4xl">🚀</span>
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      Submission queued
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Running 15 matches across Easy, Medium, and Hard.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setInfoTab("submissions");
+                      setSubmissionsRefreshKey((k) => k + 1);
+                    }}
+                  >
+                    View progress →
+                  </Button>
+                </div>
+              ) : (
+                <ResultsPanel matchId={testRunMatchId} />
+              )}
+            </Panel>
+          </PanelGroup>
+        </div>
+
+        {/* Mobile: stacked */}
+        <div className="md:hidden flex flex-col h-full overflow-auto">
+          <div className="border-b border-border">
+            <GameInfoPanel
+              game={game}
+              activeTab={infoTab}
+              onTabChange={setInfoTab}
+              submissionsRefreshKey={submissionsRefreshKey}
+            />
+          </div>
+          <div className="h-72 shrink-0 flex flex-col">
+            <div className="flex items-center px-3 py-1.5 border-b border-border bg-background shrink-0">
+              <Select value={lang} onValueChange={(v) => handleLangChange(v as Lang)}>
+                <SelectTrigger className="w-32 h-7 text-xs">
+                  <SelectValue>{LANG_LABELS[lang]}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.keys(LANG_LABELS) as Lang[]).map((l) => (
+                    <SelectItem key={l} value={l}>
+                      {LANG_LABELS[l]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1">
               <MonacoEditor
                 height="100%"
                 language={MONACO_LANG[lang]}
@@ -429,67 +478,34 @@ export default function GameEditorPage() {
                   fontFamily: "IBM Plex Mono, monospace",
                 }}
               />
-            </Panel>
-            <PanelSeparator className="w-1 bg-border hover:bg-primary/40 transition-colors cursor-col-resize" />
-            <Panel defaultSize={30} minSize={20}>
-              {submissionStarted ? (
-                <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
-                  <span className="text-4xl">🚀</span>
-                  <div>
-                    <p className="font-semibold text-foreground">Submission queued</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Running 15 matches across Easy, Medium, and Hard.
-                    </p>
-                  </div>
-                  <Link href="/submissions">
-                    <Button size="sm" variant="outline">View progress →</Button>
-                  </Link>
-                </div>
-              ) : (
-                <ResultsPanel matchId={testRunMatchId} />
-              )}
-            </Panel>
-          </PanelGroup>
-        </div>
-
-        {/* Mobile: stacked */}
-        <div className="md:hidden flex flex-col h-full overflow-auto">
-          <div className="border-b border-border">
-            <GameInfoPanel game={game} />
-          </div>
-          <div className="h-72 shrink-0">
-            <MonacoEditor
-              height="100%"
-              language={MONACO_LANG[lang]}
-              value={code}
-              onChange={(v) => setCode(v ?? "")}
-              theme="vs-dark"
-              options={{
-                fontSize: 13,
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                padding: { top: 12 },
-                fontFamily: "IBM Plex Mono, monospace",
-              }}
-            />
+            </div>
           </div>
           <div className="border-t border-border flex-1">
             {submissionStarted ? (
-                <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
-                  <span className="text-4xl">🚀</span>
-                  <div>
-                    <p className="font-semibold text-foreground">Submission queued</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Running 15 matches across Easy, Medium, and Hard.
-                    </p>
-                  </div>
-                  <Link href="/submissions">
-                    <Button size="sm" variant="outline">View progress →</Button>
-                  </Link>
+              <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
+                <span className="text-4xl">🚀</span>
+                <div>
+                  <p className="font-semibold text-foreground">
+                    Submission queued
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Running 15 matches across Easy, Medium, and Hard.
+                  </p>
                 </div>
-              ) : (
-                <ResultsPanel matchId={testRunMatchId} />
-              )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setInfoTab("submissions");
+                    setSubmissionsRefreshKey((k) => k + 1);
+                  }}
+                >
+                  View progress →
+                </Button>
+              </div>
+            ) : (
+              <ResultsPanel matchId={testRunMatchId} />
+            )}
           </div>
         </div>
       </div>

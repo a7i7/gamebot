@@ -21,11 +21,13 @@ export default function TestRunDetailPage() {
   const searchParams = useSearchParams();
   const matchId = params.id as string;
   const backHref = searchParams.get("from") ?? "/test-runs";
+  const fromSubmissions = backHref.startsWith("/submissions");
   const backLabel = backHref.startsWith("/submissions/")
     ? "Submission"
     : backHref === "/submissions"
       ? "Submissions"
       : "Test Runs";
+  const pageTitle = fromSubmissions ? "Submission Run" : "Test Run";
 
   const [match, setMatch] = useState<TestRunDetail | null>(null);
   const [codeData, setCodeData] = useState<CodeResponse | null>(null);
@@ -105,7 +107,7 @@ export default function TestRunDetailPage() {
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
-        <h1 className="text-2xl font-bold text-foreground">Test Run</h1>
+        <h1 className="text-2xl font-bold text-foreground">{pageTitle}</h1>
         <code className="text-sm text-muted-foreground font-mono">
           #{match.match_id}
         </code>

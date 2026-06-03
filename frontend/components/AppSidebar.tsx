@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Gamepad2, Trophy, FlaskConical } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +17,9 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed }: AppSidebarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
+  const effectivePathname = from?.startsWith("/submissions") ? "/submissions" : pathname;
 
   return (
     <aside
@@ -27,7 +30,7 @@ export function AppSidebar({ collapsed }: AppSidebarProps) {
     >
       <nav className="space-y-1 mt-2">
         {navItems.map(({ href, icon: Icon, label }) => {
-          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const active = href === "/" ? effectivePathname === "/" : effectivePathname.startsWith(href);
           return (
             <div key={href} className="relative group/item">
               <Link

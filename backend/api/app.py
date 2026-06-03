@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.models import (
     CodeResponse,
+    LeaderboardEntry,
     SubmissionRequest,
     SubmissionResponse,
     SubmissionSummary,
@@ -278,6 +279,25 @@ async def get_submission(
         created_at=scored.created_at,
         completed_at=scored.completed_at,
     )
+
+
+@app.get("/leaderboards/{game}", response_model=list[LeaderboardEntry])
+async def get_leaderboard(
+    game: str,
+    session: AsyncSession = Depends(get_session),
+) -> list[LeaderboardEntry]:
+    entries = await scored_submissions_repo.get_leaderboard(session, game)
+    return [
+        LeaderboardEntry(
+            rank=i + 1,
+            username=row["username"],
+            score=row["score"],
+            wins=row["wins"],
+            draws=row["draws"],
+            losses=row["losses"],
+        )
+        for i, row in enumerate(entries)
+    ]
 
 
 @app.get("/health")

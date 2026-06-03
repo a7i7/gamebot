@@ -95,6 +95,17 @@ class SubmissionResponse(BaseModel):
     completed_at: Optional[datetime]
 
 
+# --- Leaderboard schemas ---
+
+class LeaderboardEntry(BaseModel):
+    rank: int
+    username: str
+    score: float
+    wins: int
+    draws: int
+    losses: int
+
+
 # --- Auth schemas ---
 
 class SignupRequest(BaseModel):

@@ -38,6 +38,17 @@ export interface CodeResponse {
   code: string;
 }
 
+// --- Leaderboard types ---
+
+export interface LeaderboardEntry {
+  rank: number;
+  username: string;
+  score: number;
+  wins: number;
+  draws: number;
+  losses: number;
+}
+
 // --- Scored Submission types ---
 
 export interface SubmissionSummary {
@@ -196,6 +207,12 @@ export async function getSubmission(
   const res = await fetch(`${API_URL}/submissions/${submissionId}`, {
     headers: authHeaders(),
   });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function getLeaderboard(game: string): Promise<LeaderboardEntry[]> {
+  const res = await fetch(`${API_URL}/leaderboards/${game}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
