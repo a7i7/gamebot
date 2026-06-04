@@ -39,10 +39,14 @@ class Referee:
         state = self.game.initial_state()
         config = self.game.config()
 
-        await asyncio.gather(
+        init_results = await asyncio.gather(
             self.bots[0].send(InitMessage(player=1, game=self.game.name, config=config).encode()),
             self.bots[1].send(InitMessage(player=2, game=self.game.name, config=config).encode()),
+            return_exceptions=True,
         )
+        for i, result in enumerate(init_results):
+            if isinstance(result, Exception):
+                return self._forfeit(i, "crash", 0, state)
 
         turn = 0
         last_move = None
@@ -61,14 +65,13 @@ class Referee:
 
                 legal = self.game.legal_moves(state)
 
-                await bot.send(MoveMessage(
-                    turn=turn,
-                    board=self.game.board_repr(state),
-                    last_move=last_move,
-                    legal_moves=legal,
-                ).encode())
-
                 try:
+                    await bot.send(MoveMessage(
+                        turn=turn,
+                        board=self.game.board_repr(state),
+                        last_move=last_move,
+                        legal_moves=legal,
+                    ).encode())
                     move = await bot.recv_move()
                 except BotTimeoutError:
                     return self._forfeit(current, "timeout", turn, state)

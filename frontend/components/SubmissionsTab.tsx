@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { listSubmissions, getSubmission } from "@/lib/api";
+import { scoreColor } from "@/lib/scoring";
 import type { SubmissionSummary, SubmissionDetail, SubmissionMatchDetail } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 
@@ -15,12 +16,6 @@ function relativeTime(iso: string): string {
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
-}
-
-function scoreColor(score: number): string {
-  if (score >= 80) return "text-green-500 font-bold";
-  if (score >= 50) return "text-yellow-500 font-bold";
-  return "text-destructive font-bold";
 }
 
 function outcomeLabel(m: SubmissionMatchDetail): string {
@@ -176,7 +171,7 @@ export function SubmissionsTab({ game, refreshKey = 0 }: Props) {
                 </span>
                 <span className="ml-auto">
                   {s.status === "completed" && s.score !== null ? (
-                    <span className={`text-sm ${scoreColor(s.score)}`}>
+                    <span className={`text-sm font-bold ${scoreColor(s.score, s.game)}`}>
                       {s.score.toFixed(1)}
                     </span>
                   ) : (

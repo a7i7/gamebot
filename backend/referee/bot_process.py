@@ -66,8 +66,13 @@ class BotProcess:
         ]
 
     async def send(self, message_bytes: bytes):
-        self._proc.stdin.write(message_bytes)
-        await self._proc.stdin.drain()
+        try:
+            self._proc.stdin.write(message_bytes)
+            await self._proc.stdin.drain()
+        except Exception as exc:
+            raise BotCrashError(
+                f"{self.container_name} connection lost while sending: {exc}"
+            ) from exc
 
     async def recv_move(self):
         """

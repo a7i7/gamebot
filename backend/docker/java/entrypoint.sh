@@ -14,7 +14,12 @@ fi
 cp /bot/user_bot /tmp/${CLASS_NAME}.java
 
 # Compile against the bundled wrapper classes and org.json.
-javac -cp /app/lib/json.jar:/app/classes /tmp/${CLASS_NAME}.java
+# Redirect errors to stdout so they appear in bot_logs (stderr is the protocol
+# channel for Java bots, so compile errors there would be silently swallowed).
+if ! javac -cp /app/lib/json.jar:/app/classes /tmp/${CLASS_NAME}.java > /tmp/compile.out 2>&1; then
+    cat /tmp/compile.out   # stdout = debug channel = visible in bot_logs
+    exit 1
+fi
 
 # Run the wrapper with compiled classes on the classpath.
 exec java -cp /tmp:/app/classes:/app/lib/json.jar Wrapper "$CLASS_NAME"

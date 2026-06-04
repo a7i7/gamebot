@@ -85,8 +85,12 @@ public class Wrapper {
                         stdout.println(response.toString());
                         stdout.flush();
                     } catch (InvocationTargetException e) {
-                        System.err.println("[wrapper] makeMove threw: " + e.getCause());
-                        e.getCause().printStackTrace(System.err);
+                        // Print to System.out (the debug/bot_log channel) so the
+                        // exception is visible to the user, not swallowed by the
+                        // protocol reader which listens on System.err.
+                        System.out.println("[wrapper] makeMove threw: " + e.getCause());
+                        e.getCause().printStackTrace(System.out);
+                        System.out.flush();
                         System.exit(1);
                     }
                     break;

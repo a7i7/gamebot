@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { listSubmissions, getSubmission } from "@/lib/api";
+import { scoreColor } from "@/lib/scoring";
 import type {
   SubmissionSummary,
   SubmissionDetail,
@@ -28,12 +29,6 @@ function relativeTime(iso: string): string {
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
   return `${Math.floor(hrs / 24)}d ago`;
-}
-
-function scoreColor(score: number): string {
-  if (score >= 80) return "text-green-500 font-bold";
-  if (score >= 50) return "text-yellow-500 font-bold";
-  return "text-destructive font-bold";
 }
 
 function matchScore(m: SubmissionMatchDetail): string {
@@ -161,7 +156,7 @@ export default function SubmissionsPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Submissions</h1>
           <p className="text-muted-foreground mt-1">
-            Scored runs across all difficulties. 15 matches per submission.
+            Scored runs across all difficulties (Easy, Medium, and Hard).
           </p>
         </div>
         <Link href="/">
@@ -227,7 +222,7 @@ export default function SubmissionsPage() {
                       </TableCell>
                       <TableCell>
                         {s.status === "completed" && s.score !== null ? (
-                          <span className={scoreColor(s.score)}>
+                          <span className={`font-bold ${scoreColor(s.score, s.game)}`}>
                             {s.score.toFixed(1)}
                           </span>
                         ) : s.status === "failed" ? (

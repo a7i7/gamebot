@@ -10,6 +10,7 @@ import {
 } from "react-resizable-panels";
 import { submitTestRun, createSubmission } from "@/lib/api";
 import type { Lang } from "@/lib/api";
+import { totalMatchesForGame } from "@/lib/scoring";
 import { GameInfoPanel } from "@/components/GameInfoPanel";
 import { ResultsPanel } from "@/components/ResultsPanel";
 import { Button } from "@/components/ui/button";
@@ -656,7 +657,7 @@ export default function GameEditorPage() {
                       Submission queued
                     </p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Running 15 matches across Easy, Medium, and Hard.
+                      Running {totalMatchesForGame(game)} matches across Easy, Medium, and Hard.
                     </p>
                   </div>
                   <Button

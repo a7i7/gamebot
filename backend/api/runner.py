@@ -13,7 +13,7 @@ from referee.main import GAME_MAP, LANG_IMAGE_MAP
 from db.engine import AsyncSessionLocal
 from db.repos import matches as matches_repo
 from db.repos import scored_submissions as scored_submissions_repo
-from db.repos.scored_submissions import compute_match_points
+from db.repos.scored_submissions import compute_match_points, DIFFICULTIES, games_per_difficulty
 from bots.registry import get_opponent
 
 LANG_EXT = {
@@ -22,9 +22,6 @@ LANG_EXT = {
     "java":       ".java",
     "cpp":        ".cpp",
 }
-
-_SCORED_SUBMISSION_DIFFICULTIES = ["easy", "medium", "hard"]
-_GAMES_PER_DIFFICULTY = 5
 
 
 async def run_match(
@@ -78,7 +75,7 @@ async def run_match(
                 turns=result.turn,
                 final_board=result.board,
                 bot_logs=result.bot_logs,
-                points_earned=compute_match_points(opponent, remapped_winner, result.is_draw),
+                points_earned=compute_match_points(game_name, opponent, remapped_winner, result.is_draw),
             )
 
     except Exception as exc:
@@ -108,8 +105,8 @@ async def run_scored_submission(
     match_tasks = []
     match_ids = []
 
-    for difficulty in _SCORED_SUBMISSION_DIFFICULTIES:
-        for _ in range(_GAMES_PER_DIFFICULTY):
+    for difficulty in DIFFICULTIES:
+        for _ in range(games_per_difficulty(game_name)):
             async with AsyncSessionLocal() as session:
                 match = await matches_repo.create_match(
                     session,

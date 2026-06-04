@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSubmission } from "@/lib/api";
+import { scoreColor } from "@/lib/scoring";
 import type { SubmissionDetail, SubmissionMatchDetail } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -30,12 +31,6 @@ function outcomeClass(m: SubmissionMatchDetail): string {
   if (m.winner_player === 1) return "text-green-500";
   if (m.winner_player === 2) return "text-destructive";
   return "text-muted-foreground";
-}
-
-function scoreColor(score: number): string {
-  if (score >= 80) return "text-green-500";
-  if (score >= 50) return "text-yellow-500";
-  return "text-destructive";
 }
 
 export default function SubmissionDetailPage() {
@@ -106,7 +101,7 @@ export default function SubmissionDetailPage() {
           </CardHeader>
           <CardContent className="pb-4">
             {submission.status === "completed" && submission.score !== null ? (
-              <span className={`text-3xl font-bold ${scoreColor(submission.score)}`}>
+              <span className={`text-3xl font-bold ${scoreColor(submission.score, submission.game)}`}>
                 {submission.score.toFixed(1)}
               </span>
             ) : (

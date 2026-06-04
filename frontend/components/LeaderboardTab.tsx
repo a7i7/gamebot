@@ -2,13 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getLeaderboard } from "@/lib/api";
+import { scoreColor } from "@/lib/scoring";
 import type { LeaderboardEntry } from "@/lib/api";
-
-function scoreColor(score: number): string {
-  if (score >= 80) return "text-green-500";
-  if (score >= 50) return "text-yellow-500";
-  return "text-destructive";
-}
 
 function rankDisplay(rank: number): { label: string; className: string } {
   if (rank === 1) return { label: "🥇", className: "" };
@@ -76,7 +71,7 @@ export function LeaderboardTab({ game }: Props) {
               <span className="text-xs text-muted-foreground font-mono">
                 {entry.wins}W {entry.draws}D {entry.losses}L
               </span>
-              <span className={`text-sm font-bold w-12 text-right ${scoreColor(entry.score)}`}>
+              <span className={`text-sm font-bold w-12 text-right ${scoreColor(entry.score, game)}`}>
                 {entry.score.toFixed(1)}
               </span>
             </div>
