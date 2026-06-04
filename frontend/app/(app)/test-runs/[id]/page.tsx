@@ -7,6 +7,7 @@ import type { TestRunDetail, CodeResponse } from "@/lib/api";
 import Board from "@/components/Board";
 import LudoBoard from "@/components/LudoBoard";
 import type { LudoBoardData } from "@/components/LudoBoard";
+import ReplayPlayer from "@/components/ReplayPlayer";
 import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -178,6 +179,21 @@ export default function TestRunDetailPage() {
           </Card>
         )}
       </div>
+
+      {result?.moves && result.moves.length > 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Replay</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReplayPlayer
+              moves={result.moves}
+              game={match.game}
+              userPlayer={result.user_player}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {status === "failed" && match.error && (
         <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">

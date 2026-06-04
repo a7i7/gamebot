@@ -75,6 +75,7 @@ async def run_match(
                 turns=result.turn,
                 final_board=result.board,
                 bot_logs=result.bot_logs,
+                moves=result.moves,
                 points_earned=compute_match_points(game_name, opponent, remapped_winner, result.is_draw),
             )
 

@@ -52,6 +52,8 @@ class Referee:
         last_move = None
         current = 0  # index: 0 = player 1, 1 = player 2
 
+        self._moves = [{"turn": 0, "player": None, "move": None, "board": self.game.board_repr(state)}]
+
         try:
             while not self.game.is_terminal(state):
                 turn += 1
@@ -85,6 +87,7 @@ class Referee:
 
                 state = self.game.apply_move(state, move, player_id)
                 last_move = {"player": player_id, "move": move}
+                self._moves.append({"turn": turn, "player": player_id, "move": move, "board": self.game.board_repr(state)})
 
                 if self.verbose:
                     symbol = "X" if player_id == 1 else "O"
@@ -117,6 +120,7 @@ class Referee:
             turn=turn,
             board=self.game.board_repr(state),
             bot_logs=[b.stderr_log for b in self.bots],
+            moves=getattr(self, "_moves", []),
         )
 
     def _normal_result(self, state, turn: int) -> MatchResult:
@@ -128,6 +132,7 @@ class Referee:
             turn=turn,
             board=self.game.board_repr(state),
             bot_logs=[b.stderr_log for b in self.bots],
+            moves=getattr(self, "_moves", []),
         )
 
     async def _send_end_messages(self, state, turn: int):

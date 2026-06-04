@@ -22,6 +22,13 @@ export type BoardData =
   | number[][]
   | { tokens: LudoPosition[][]; dice: number; colors: Record<string, string> };
 
+export interface MoveRecord {
+  turn: number;
+  player: number | null;
+  move: number[] | number | string | null;
+  board: BoardData;
+}
+
 export interface MatchResult {
   winner_player: number | null;
   loser_player: number | null;
@@ -31,6 +38,7 @@ export interface MatchResult {
   turn: number;
   board: BoardData;
   bot_logs: string[];
+  moves: MoveRecord[];
 }
 
 export interface TestRunDetail extends TestRunSummary {

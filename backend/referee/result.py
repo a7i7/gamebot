@@ -10,6 +10,7 @@ class MatchResult:
     turn: int
     board: object
     bot_logs: list = field(default_factory=list)
+    moves: list = field(default_factory=list)
 
     @property
     def is_draw(self) -> bool:

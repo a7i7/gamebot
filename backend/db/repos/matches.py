@@ -55,6 +55,7 @@ async def update_match_result(
     turns: int | None = None,
     final_board: list | dict | None = None,
     bot_logs: list | None = None,
+    moves: list | None = None,
     error: str | None = None,
     points_earned: float | None = None,
 ) -> None:
@@ -69,6 +70,7 @@ async def update_match_result(
     match.turns = turns
     match.final_board = final_board
     match.bot_logs = bot_logs
+    match.moves = moves
     match.error = error
     match.points_earned = points_earned
     match.completed_at = datetime.now(timezone.utc)

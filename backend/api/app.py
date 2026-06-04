@@ -98,6 +98,7 @@ def _to_test_run_response(match) -> TestRunResponse:
             turn=match.turns or 0,
             board=match.final_board,
             bot_logs=match.bot_logs or [],
+            moves=match.moves or [],
         )
     return TestRunResponse(
         match_id=str(match.id),

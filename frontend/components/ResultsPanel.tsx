@@ -1,24 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getTestRun } from "@/lib/api";
 import type { TestRunDetail } from "@/lib/api";
 import Board from "@/components/Board";
 import LudoBoard from "@/components/LudoBoard";
 import type { LudoBoardData } from "@/components/LudoBoard";
 import StatusBadge from "@/components/StatusBadge";
+import { Button } from "@/components/ui/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Clapperboard } from "lucide-react";
 
 interface ResultsPanelProps {
   matchId: string | null;
 }
 
 export function ResultsPanel({ matchId }: ResultsPanelProps) {
+  const router = useRouter();
   const [match, setMatch] = useState<TestRunDetail | null>(null);
   const [logsOpen, setLogsOpen] = useState(true);
 
@@ -112,6 +115,15 @@ export function ResultsPanel({ matchId }: ResultsPanelProps) {
               {result.turn} turn{result.turn !== 1 ? "s" : ""} ·{" "}
               {result.reason.replace("_", " ")}
             </p>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="mt-3 gap-1.5"
+              onClick={() => router.push(`/test-runs/${match.match_id}`)}
+            >
+              <Clapperboard className="size-3.5" />
+              View Replay
+            </Button>
           </div>
 
           {/* Board */}
@@ -128,10 +140,22 @@ export function ResultsPanel({ matchId }: ResultsPanelProps) {
               <>
                 <Board board={result.board as number[][]} />
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                  <span className={result.user_player === 1 ? "text-primary font-semibold" : "text-destructive font-semibold"}>
+                  <span
+                    className={
+                      result.user_player === 1
+                        ? "text-primary font-semibold"
+                        : "text-destructive font-semibold"
+                    }
+                  >
                     {result.user_player === 1 ? "X" : "O"} — You
                   </span>
-                  <span className={result.user_player === 1 ? "text-destructive font-semibold" : "text-primary font-semibold"}>
+                  <span
+                    className={
+                      result.user_player === 1
+                        ? "text-destructive font-semibold"
+                        : "text-primary font-semibold"
+                    }
+                  >
                     {result.user_player === 1 ? "O" : "X"} — Opponent
                   </span>
                 </div>

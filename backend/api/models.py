@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from pydantic import BaseModel, field_validator
 
 _EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
@@ -25,6 +25,13 @@ class TestRunSummary(BaseModel):
     submitted_at: datetime
 
 
+class MoveRecord(BaseModel):
+    turn: int
+    player: Optional[int]
+    move: Optional[Any]
+    board: list | dict
+
+
 class MatchResultSchema(BaseModel):
     winner_player: Optional[int]
     loser_player: Optional[int]
@@ -34,6 +41,7 @@ class MatchResultSchema(BaseModel):
     turn: int
     board: list | dict  # TicTacToe: 2D grid. Ludo: {"tokens": [...], "dice": int}.
     bot_logs: list[str]
+    moves: list[MoveRecord] = []
 
 
 class TestRunResponse(BaseModel):
