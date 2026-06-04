@@ -16,6 +16,12 @@ export interface TestRunSummary {
   submitted_at: string;
 }
 
+// Tic-Tac-Toe: number[][] grid. Ludo: { tokens, dice, colors }. Game-specific.
+export type LudoPosition = { zone: "BASE" | "RING" | "HOME_COLUMN"; index: number };
+export type BoardData =
+  | number[][]
+  | { tokens: LudoPosition[][]; dice: number; colors: Record<string, string> };
+
 export interface MatchResult {
   winner_player: number | null;
   loser_player: number | null;
@@ -23,7 +29,7 @@ export interface MatchResult {
   is_draw: boolean;
   reason: string;
   turn: number;
-  board: number[][];
+  board: BoardData;
   bot_logs: string[];
 }
 
@@ -153,7 +159,7 @@ export async function submitTestRun(
     headers: authHeaders(),
     body: JSON.stringify({ game, lang, code, opponent }),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
   return res.json();
 }
 
@@ -191,7 +197,7 @@ export async function createSubmission(
     headers: authHeaders(),
     body: JSON.stringify({ game, lang, code }),
   });
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
   return res.json();
 }
 

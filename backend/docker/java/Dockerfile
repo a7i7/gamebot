@@ -9,9 +9,12 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/* \
        -o json.jar
 
 # Copy sources: bootstrapper, interface, and all Java game adapters.
+# (All adapters share one flat classpath, so adapter class names must be
+# globally unique across games — e.g. Ludo uses LudoMove, not Move.)
 COPY bootstrappers/java/GameBotInterface.java .
 COPY bootstrappers/java/Wrapper.java .
 COPY games/tictactoe/adapters/java/ .
+COPY games/ludo/adapters/java/ .
 
 # Compile everything together.
 RUN javac -cp json.jar *.java

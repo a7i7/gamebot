@@ -10,7 +10,7 @@ _USERNAME_RE = re.compile(r"^[a-zA-Z0-9_]{3,30}$")
 # --- Test run schemas ---
 
 class TestRunRequest(BaseModel):
-    game: Literal["tictactoe"]
+    game: Literal["tictactoe", "ludo"]
     code: str
     lang: Literal["python", "javascript", "java", "cpp"]
     opponent: Literal["easy", "medium", "hard"] = "easy"
@@ -32,7 +32,7 @@ class MatchResultSchema(BaseModel):
     is_draw: bool
     reason: str
     turn: int
-    board: list
+    board: list | dict  # TicTacToe: 2D grid. Ludo: {"tokens": [...], "dice": int}.
     bot_logs: list[str]
 
 
@@ -53,7 +53,7 @@ class CodeResponse(BaseModel):
 # --- Scored submission schemas ---
 
 class SubmissionRequest(BaseModel):
-    game: Literal["tictactoe"]
+    game: Literal["tictactoe", "ludo"]
     code: str
     lang: Literal["python", "javascript", "java", "cpp"]
 

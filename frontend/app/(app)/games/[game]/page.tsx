@@ -259,6 +259,245 @@ public:
 `,
 };
 
+// Ludo only supports Python and JavaScript bots.
+const LUDO_STARTER: Partial<Record<Lang, string>> = {
+  python: `# ── Types injected by the framework (no import needed) ───────────────────
+#
+# The referee rolls the die for you each turn — you only pick which token
+# to move. Return a token index (an int from state.legal_moves), or NO_MOVE
+# if state.legal_moves is empty.
+#
+# Each token has a Position(zone, index):
+#   zone == Zone.BASE          index -1      in the yard
+#   zone == Zone.RING          index 0..51   SHARED, absolute ring square
+#   zone == Zone.HOME_COLUMN   index 0..5    your private column; 5 = HOME
+# RING is shared: two tokens on the same RING index sit on the same square
+# (that's how captures happen). You enter the ring at START[state.color].
+#
+# LudoState  (passed to makeMove every turn)
+#   state.tokens        tokens[playerIndex][tokenIndex] -> Position
+#                         your tokens are state.tokens[state.player - 1]
+#   state.dice          your roll this turn, 1-6
+#   state.player        your player ID — 1 or 2
+#   state.color         your Color (P1 = RED, P2 = YELLOW)
+#   state.colors        {playerId: Color} for both players
+#   state.turn          1-indexed move count
+#   state.last_move     opponent's last token index, "NO_MOVE", or None
+#   state.legal_moves   tuple of token indices you may move; return one, or NO_MOVE
+# ─────────────────────────────────────────────────────────────────────────
+
+class GameBot:
+    def __init__(self, player_id: int):
+        self.player_id = player_id  # 1 or 2, constant for the whole game
+
+    def steps(self, state, pos):
+        # How far a token has travelled from your start (-1 = base, 56 = HOME)
+        if pos.zone == Zone.BASE:
+            return -1
+        if pos.zone == Zone.RING:
+            return (pos.index - START[state.color]) % RING_LENGTH
+        return RING_LENGTH - 1 + pos.index  # HOME_COLUMN
+
+    def makeMove(self, state):
+        if not state.legal_moves:
+            return NO_MOVE
+
+        my = state.tokens[state.player - 1]
+
+        # Finish a token if this roll lands it exactly on HOME
+        for i in state.legal_moves:
+            if self.steps(state, my[i]) + state.dice == (RING_LENGTH - 2) + HOME_COLUMN_LENGTH:
+                return i
+
+        # Otherwise advance the token closest to home
+        return max(state.legal_moves, key=lambda i: self.steps(state, my[i]))
+`,
+  javascript: `// ── Types injected by the framework (available as globals) ───────────────
+//
+// The referee rolls the die for you each turn — you only pick which token
+// to move. Return a token index (a number from state.legalMoves), or NO_MOVE
+// if state.legalMoves is empty.
+//
+// Each token has a Position { zone, index }:
+//   zone Zone.BASE          index -1      in the yard
+//   zone Zone.RING          index 0..51   SHARED, absolute ring square
+//   zone Zone.HOME_COLUMN   index 0..5    your private column; 5 = HOME
+// RING is shared: two tokens on the same RING index sit on the same square
+// (that's how captures happen). You enter the ring at START[state.color].
+//
+// LudoState  (passed to makeMove every turn)
+//   state.tokens        tokens[playerIndex][tokenIndex] -> Position
+//                         your tokens are state.tokens[state.player - 1]
+//   state.dice          your roll this turn, 1-6
+//   state.player        your player ID — 1 or 2
+//   state.color         your Color (P1 = RED, P2 = YELLOW)
+//   state.colors        { playerId: Color } for both players
+//   state.turn          1-indexed move count
+//   state.lastMove      opponent's last token index, "NO_MOVE", or null
+//   state.legalMoves    array of token indices you may move; return one, or NO_MOVE
+// ─────────────────────────────────────────────────────────────────────────
+
+export class GameBot {
+  constructor(playerId) {
+    this.playerId = playerId; // 1 or 2, constant for the whole game
+  }
+
+  steps(state, pos) {
+    // How far a token has travelled from your start (-1 = base, 56 = HOME)
+    if (pos.zone === Zone.BASE) return -1;
+    if (pos.zone === Zone.RING) return (pos.index - START[state.color] + RING_LENGTH) % RING_LENGTH;
+    return RING_LENGTH - 1 + pos.index; // HOME_COLUMN
+  }
+
+  makeMove(state) {
+    if (state.legalMoves.length === 0) return NO_MOVE;
+
+    const my = state.tokens[state.player - 1];
+    const FINISH = (RING_LENGTH - 2) + HOME_COLUMN_LENGTH; // 56
+
+    // Finish a token if this roll lands it exactly on HOME
+    for (const i of state.legalMoves) {
+      if (this.steps(state, my[i]) + state.dice === FINISH) return i;
+    }
+
+    // Otherwise advance the token closest to home
+    return state.legalMoves.reduce((a, b) =>
+      this.steps(state, my[a]) >= this.steps(state, my[b]) ? a : b
+    );
+  }
+}
+`,
+  java: `// ── Available types (compiled into the container) ─────────────────────────
+//
+// The referee rolls the die for you each turn — you only pick which token to
+// move. Return new LudoMove(i) for a token index in state.legalMoves, or
+// LudoMove.NO_MOVE if state.legalMoves is empty.
+//
+// Position(zone, index):
+//   Zone.BASE          index -1      in the yard
+//   Zone.RING          index 0..51   SHARED, absolute ring square
+//   Zone.HOME_COLUMN   index 0..5    your private column; 5 = HOME
+// RING is shared: two tokens on the same RING index sit on the same square
+// (that's how captures happen). You enter the ring at LudoState.START.get(color).
+//
+// LudoState:
+//   state.tokens       Position[playerIndex][tokenIndex]; yours are tokens[player-1]
+//   state.dice         your roll, 1-6
+//   state.player       1 or 2
+//   state.color        your Color (RED for P1, YELLOW for P2)
+//   state.colors       Map<Integer,Color> for both players
+//   state.turn         1-indexed move count
+//   state.lastMove     opponent's last token index (Integer), or null
+//   state.legalMoves   int[] of token indices you may move
+// ─────────────────────────────────────────────────────────────────────────
+
+public class GameBot {
+    private final int playerId;
+
+    public GameBot(int playerId) {
+        this.playerId = playerId; // 1 or 2, constant for the whole game
+    }
+
+    // How far a token has travelled from your start (-1 = base, 56 = HOME)
+    private int steps(LudoState state, Position p) {
+        if (p.zone == Zone.BASE) return -1;
+        if (p.zone == Zone.RING) {
+            int start = LudoState.START.get(state.color);
+            int n = LudoState.RING_LENGTH;
+            return ((p.index - start) % n + n) % n;
+        }
+        return LudoState.RING_LENGTH - 1 + p.index; // HOME_COLUMN
+    }
+
+    public LudoMove makeMove(LudoState state) {
+        if (state.legalMoves.length == 0) return LudoMove.NO_MOVE;
+
+        Position[] my = state.tokens[state.player - 1];
+        int finish = (LudoState.RING_LENGTH - 2) + LudoState.HOME_COLUMN_LENGTH; // 56
+
+        // Finish a token if this roll lands it exactly on HOME
+        for (int i : state.legalMoves) {
+            if (steps(state, my[i]) + state.dice == finish) return new LudoMove(i);
+        }
+
+        // Otherwise advance the token closest to home
+        int best = state.legalMoves[0];
+        for (int i : state.legalMoves) {
+            if (steps(state, my[i]) > steps(state, my[best])) best = i;
+        }
+        return new LudoMove(best);
+    }
+}
+`,
+  cpp: `// ── Available types (defined in ludo.h, included automatically) ───────────
+//
+// The referee rolls the die for you each turn — you only pick which token to
+// move. Return LudoMove(i) for a token index in state.legalMoves, or NO_MOVE
+// if state.legalMoves is empty.
+//
+// Position { Zone zone; int index; }:
+//   Zone::BASE          index -1      in the yard
+//   Zone::RING          index 0..51   SHARED, absolute ring square
+//   Zone::HOME_COLUMN   index 0..5    your private column; 5 = HOME
+// RING is shared: two tokens on the same RING index sit on the same square
+// (that's how captures happen). You enter the ring at START.at(state.color).
+//
+// LudoState:
+//   state.tokens       vector<vector<Position>>; yours are tokens[player-1]
+//   state.dice         your roll, 1-6
+//   state.player       1 or 2
+//   state.color        your Color (RED for P1, YELLOW for P2)
+//   state.colors       map<int,Color> for both players
+//   state.turn         1-indexed move count
+//   state.lastMove     optional<int> opponent's last token index
+//   state.legalMoves   vector<int> of token indices you may move
+// ─────────────────────────────────────────────────────────────────────────
+
+#include "ludo.h"
+#include "gamebot.h"
+
+class GameBot {
+public:
+    int playerId;
+    GameBot(int id) : playerId(id) {} // 1 or 2, constant for the whole game
+
+    // How far a token has travelled from your start (-1 = base, 56 = HOME)
+    int steps(const LudoState& state, const Position& p) {
+        if (p.zone == Zone::BASE) return -1;
+        if (p.zone == Zone::RING) {
+            int start = START.at(state.color);
+            return ((p.index - start) % RING_LENGTH + RING_LENGTH) % RING_LENGTH;
+        }
+        return RING_LENGTH - 1 + p.index; // HOME_COLUMN
+    }
+
+    LudoMove makeMove(const LudoState& state) {
+        if (state.legalMoves.empty()) return NO_MOVE;
+
+        const auto& my = state.tokens[state.player - 1];
+        int finish = (RING_LENGTH - 2) + HOME_COLUMN_LENGTH; // 56
+
+        // Finish a token if this roll lands it exactly on HOME
+        for (int i : state.legalMoves)
+            if (steps(state, my[i]) + state.dice == finish) return LudoMove(i);
+
+        // Otherwise advance the token closest to home
+        int best = state.legalMoves[0];
+        for (int i : state.legalMoves)
+            if (steps(state, my[i]) > steps(state, my[best])) best = i;
+        return LudoMove(best);
+    }
+};
+`,
+};
+
+function starterFor(game: string, lang: Lang): string {
+  if (game === "ludo") {
+    return LUDO_STARTER[lang] ?? LUDO_STARTER.python ?? "";
+  }
+  return STARTER_CODE[lang];
+}
+
 const LANG_LABELS: Record<Lang, string> = {
   python: "Python",
   javascript: "JavaScript",
@@ -278,7 +517,7 @@ export default function GameEditorPage() {
   const game = params.game as string;
 
   const [lang, setLang] = useState<Lang>("python");
-  const [code, setCode] = useState(STARTER_CODE.python);
+  const [code, setCode] = useState(() => starterFor(game, "python"));
   const [opponent, setOpponent] = useState("easy");
   const [submitting, setSubmitting] = useState(false);
   const [testRunMatchId, setTestRunMatchId] = useState<string | null>(null);
@@ -289,7 +528,7 @@ export default function GameEditorPage() {
 
   function handleLangChange(newLang: Lang) {
     setLang(newLang);
-    setCode(STARTER_CODE[newLang]);
+    setCode(starterFor(game, newLang));
   }
 
   async function handleTestRun() {

@@ -53,7 +53,7 @@ async def update_match_result(
     is_draw: bool | None = None,
     reason: str | None = None,
     turns: int | None = None,
-    final_board: list | None = None,
+    final_board: list | dict | None = None,
     bot_logs: list | None = None,
     error: str | None = None,
     points_earned: float | None = None,

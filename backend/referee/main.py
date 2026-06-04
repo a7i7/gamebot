@@ -15,9 +15,11 @@ import sys
 
 from .referee import Referee
 from games.tictactoe.logic import TicTacToeGame
+from games.ludo.logic import LudoGame
 
 GAME_MAP = {
     "tictactoe": TicTacToeGame,
+    "ludo": LudoGame,
     # Register new games here, e.g.:
     # "connect4": Connect4Game,
 }

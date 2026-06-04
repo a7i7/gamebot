@@ -53,6 +53,12 @@ class Referee:
                 turn += 1
                 bot = self.bots[current]
                 player_id = current + 1
+
+                # Optional per-turn setup hook (e.g. Ludo rolls the die here).
+                # No-op for games that don't define it (e.g. TicTacToe).
+                if hasattr(self.game, "start_turn"):
+                    state = self.game.start_turn(state)
+
                 legal = self.game.legal_moves(state)
 
                 await bot.send(MoveMessage(
@@ -83,7 +89,10 @@ class Referee:
                     if hasattr(self.game, "format_board"):
                         print(self.game.format_board(state))
 
-                current = 1 - current
+                # The game decides who moves next via state.next_player (Ludo
+                # gives the same player another turn on a 6). For TicTacToe this
+                # is 3 - player, identical to the old 1 - current alternation.
+                current = state.next_player - 1
 
         finally:
             await self._send_end_messages(state, turn)

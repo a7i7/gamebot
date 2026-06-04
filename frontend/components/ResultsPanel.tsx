@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { getTestRun } from "@/lib/api";
 import type { TestRunDetail } from "@/lib/api";
 import Board from "@/components/Board";
+import LudoBoard from "@/components/LudoBoard";
+import type { LudoBoardData } from "@/components/LudoBoard";
 import StatusBadge from "@/components/StatusBadge";
 import {
   Collapsible,
@@ -117,15 +119,24 @@ export function ResultsPanel({ matchId }: ResultsPanelProps) {
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
               Final Board
             </p>
-            <Board board={result.board} />
-            <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-              <span className={result.user_player === 1 ? "text-primary font-semibold" : "text-destructive font-semibold"}>
-                {result.user_player === 1 ? "X" : "O"} — You
-              </span>
-              <span className={result.user_player === 1 ? "text-destructive font-semibold" : "text-primary font-semibold"}>
-                {result.user_player === 1 ? "O" : "X"} — Opponent
-              </span>
-            </div>
+            {match.game === "ludo" ? (
+              <LudoBoard
+                board={result.board as LudoBoardData}
+                userPlayer={result.user_player}
+              />
+            ) : (
+              <>
+                <Board board={result.board as number[][]} />
+                <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                  <span className={result.user_player === 1 ? "text-primary font-semibold" : "text-destructive font-semibold"}>
+                    {result.user_player === 1 ? "X" : "O"} — You
+                  </span>
+                  <span className={result.user_player === 1 ? "text-destructive font-semibold" : "text-primary font-semibold"}>
+                    {result.user_player === 1 ? "O" : "X"} — Opponent
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Logs */}

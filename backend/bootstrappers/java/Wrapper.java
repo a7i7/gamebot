@@ -75,8 +75,11 @@ public class Wrapper {
                         Method makeMove = findMakeMove(botClass, state.getClass());
                         Object moveObj  = makeMove.invoke(bot, state);
 
-                        // Serialise via Move.toJson() if available, else fall back to toString.
-                        JSONArray moveJson = serialiseMove(moveObj);
+                        // Serialise via the move's toJson() if available, else fall
+                        // back to row/col fields. The result may be a JSONArray
+                        // (e.g. TicTacToe [row, col]) or a scalar (e.g. Ludo's token
+                        // index / "NO_MOVE" string) — JSONObject.put accepts any.
+                        Object moveJson = serialiseMove(moveObj);
                         JSONObject response = new JSONObject();
                         response.put("move", moveJson);
                         stdout.println(response.toString());
@@ -122,10 +125,12 @@ public class Wrapper {
         throw new NoSuchMethodException("makeMove(" + stateClass.getSimpleName() + ") not found in " + botClass);
     }
 
-    private static JSONArray serialiseMove(Object move) throws Exception {
+    private static Object serialiseMove(Object move) throws Exception {
         try {
             Method toJson = move.getClass().getMethod("toJson");
-            return (JSONArray) toJson.invoke(move);
+            // Whatever toJson() returns — a JSONArray, an Integer, a String — is
+            // put straight onto the response, so games can use scalar moves.
+            return toJson.invoke(move);
         } catch (NoSuchMethodException e) {
             // Fallback: assume Move has row/col fields.
             JSONArray arr = new JSONArray();

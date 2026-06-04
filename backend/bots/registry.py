@@ -8,6 +8,11 @@ OPPONENT_REGISTRY: dict[str, dict[str, dict]] = {
         "medium": {"file": str(_BOTS_ROOT / "tictactoe" / "medium_bot.py"), "lang": "python"},
         "hard":   {"file": str(_BOTS_ROOT / "tictactoe" / "hard_bot.py"),   "lang": "python"},
     },
+    "ludo": {
+        "easy":   {"file": str(_BOTS_ROOT / "ludo" / "easy_bot.py"),   "lang": "python"},
+        "medium": {"file": str(_BOTS_ROOT / "ludo" / "medium_bot.py"), "lang": "python"},
+        "hard":   {"file": str(_BOTS_ROOT / "ludo" / "hard_bot.py"),   "lang": "python"},
+    },
 }
 
 

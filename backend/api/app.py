@@ -1,4 +1,6 @@
 import asyncio
+import os
+import time
 import uuid
 
 from pathlib import Path
@@ -34,6 +36,27 @@ app = FastAPI(title="Gamebot Referee API")
 
 # Limit concurrent match execution to 5 to prevent CPU/resource contention
 match_semaphore = asyncio.Semaphore(5)
+
+# Per-user rate limiting — configurable via RATE_LIMIT_SECONDS env var
+RATE_LIMIT_SECONDS = int(os.environ.get("RATE_LIMIT_SECONDS", "1"))
+_test_run_last: dict[str, float] = {}
+_submission_last: dict[str, float] = {}
+
+
+def _check_rate_limit(store: dict[str, float], user_id) -> None:
+    key = str(user_id)
+    now = time.monotonic()
+    last = store.get(key)
+    if last is not None:
+        elapsed = now - last
+        if elapsed < RATE_LIMIT_SECONDS:
+            remaining = int(RATE_LIMIT_SECONDS - elapsed) + 1
+            s = "s" if remaining != 1 else ""
+            raise HTTPException(
+                status_code=429,
+                detail=f"Please wait {remaining} second{s} before trying again",
+            )
+    store[key] = now
 
 
 @app.on_event("startup")
@@ -109,6 +132,7 @@ async def create_test_run(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
+    _check_rate_limit(_test_run_last, current_user.id)
     submission = await submissions_repo.create_submission(
         session,
         user_id=current_user.id,
@@ -195,6 +219,7 @@ async def create_submission(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
+    _check_rate_limit(_submission_last, current_user.id)
     submission = await submissions_repo.create_submission(
         session,
         user_id=current_user.id,

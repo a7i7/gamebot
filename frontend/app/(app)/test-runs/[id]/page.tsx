@@ -5,6 +5,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { getTestRun, getTestRunCode } from "@/lib/api";
 import type { TestRunDetail, CodeResponse } from "@/lib/api";
 import Board from "@/components/Board";
+import LudoBoard from "@/components/LudoBoard";
+import type { LudoBoardData } from "@/components/LudoBoard";
 import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -156,13 +158,22 @@ export default function TestRunDetailPage() {
               <CardTitle className="text-base">Final Board</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Board board={result.board} />
-              <div className="flex gap-4 text-xs text-muted-foreground">
-                <span className="text-primary font-semibold">X — You</span>
-                <span className="text-destructive font-semibold">
-                  O — Opponent
-                </span>
-              </div>
+              {match.game === "ludo" ? (
+                <LudoBoard
+                  board={result.board as LudoBoardData}
+                  userPlayer={result.user_player}
+                />
+              ) : (
+                <>
+                  <Board board={result.board as number[][]} />
+                  <div className="flex gap-4 text-xs text-muted-foreground">
+                    <span className="text-primary font-semibold">X — You</span>
+                    <span className="text-destructive font-semibold">
+                      O — Opponent
+                    </span>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         )}

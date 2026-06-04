@@ -12,6 +12,13 @@ const games = [
     available: true,
   },
   {
+    id: "ludo",
+    name: "Ludo",
+    emoji: "🎲",
+    description: "2-player, 4 tokens each. The referee rolls the die — you pick which token to move. First to get all four tokens home wins.",
+    available: true,
+  },
+  {
     id: "connect4",
     name: "Connect 4",
     emoji: "🔴",
@@ -37,7 +44,7 @@ export default function GamesPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {games.map((game) => (
-          <Card key={game.id} className={game.available ? "" : "opacity-60"}>
+          <Card key={game.id} className={`h-full ${game.available ? "" : "opacity-60"}`}>
             <CardHeader className="pb-3">
               <div className="text-4xl mb-2">{game.emoji}</div>
               <div className="flex items-center gap-2">
@@ -47,19 +54,21 @@ export default function GamesPage() {
                 )}
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="flex flex-1 flex-col gap-4">
               <p className="text-sm text-muted-foreground">{game.description}</p>
-              {game.available ? (
-                <Link href={`/games/${game.id}`}>
-                  <Button className="w-full" size="sm">
-                    Play →
+              <div className="mt-auto">
+                {game.available ? (
+                  <Link href={`/games/${game.id}`} className="block">
+                    <Button className="w-full" size="sm">
+                      Play →
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button className="w-full" size="sm" disabled>
+                    Coming Soon
                   </Button>
-                </Link>
-              ) : (
-                <Button className="w-full" size="sm" disabled>
-                  Coming Soon
-                </Button>
-              )}
+                )}
+              </div>
             </CardContent>
           </Card>
         ))}
