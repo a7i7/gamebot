@@ -43,6 +43,7 @@ class Color(str, Enum):
 # 2-player game Player 1 = RED (enters at 0) and Player 2 = YELLOW (enters at 26).
 START = {Color.RED: 0, Color.GREEN: 13, Color.YELLOW: 26, Color.BLUE: 39}
 PLAYER_COLOR = {1: Color.RED, 2: Color.YELLOW}
+SAFE_RING_INDICES = frozenset({0, 8, 13, 21, 26, 34, 39, 47})
 
 
 @dataclass(frozen=True)

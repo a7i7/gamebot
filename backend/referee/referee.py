@@ -17,11 +17,15 @@ class Referee:
     Each bot_config is a dict with keys:
         image (str)  — Docker image name
         file  (str)  — absolute path to the user's bot file on the host
+
+    For human-vs-bot games use the factory:
+        result = await Referee.with_bots(game, human_proxy, bot_process).run()
     """
 
     def __init__(self, game, bot1_config: dict, bot2_config: dict, verbose: bool = False):
         self.game = game
         self.verbose = verbose
+        self._on_move_applied = None
         match_id = uuid.uuid4().hex[:8]
         self.bots = [
             BotProcess(
@@ -32,6 +36,16 @@ class Referee:
             )
             for i, cfg in enumerate([bot1_config, bot2_config])
         ]
+
+    @classmethod
+    def with_bots(cls, game, bot1, bot2, on_move_applied=None, verbose: bool = False) -> "Referee":
+        """Construct a Referee with pre-built bot objects (BotProcess or HumanBotProxy)."""
+        instance = cls.__new__(cls)
+        instance.game = game
+        instance.verbose = verbose
+        instance.bots = [bot1, bot2]
+        instance._on_move_applied = on_move_applied
+        return instance
 
     async def run(self) -> MatchResult:
         await asyncio.gather(self.bots[0].start(), self.bots[1].start())
@@ -88,6 +102,8 @@ class Referee:
                 state = self.game.apply_move(state, move, player_id)
                 last_move = {"player": player_id, "move": move}
                 self._moves.append({"turn": turn, "player": player_id, "move": move, "board": self.game.board_repr(state)})
+                if self._on_move_applied:
+                    await self._on_move_applied(list(self._moves))
 
                 if self.verbose:
                     symbol = "X" if player_id == 1 else "O"

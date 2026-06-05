@@ -103,6 +103,30 @@ class SubmissionResponse(BaseModel):
     completed_at: Optional[datetime]
 
 
+# --- Manual game schemas ---
+
+class ManualGameRequest(BaseModel):
+    game: Literal["tictactoe", "ludo"]
+    opponent: Literal["easy", "medium", "hard"] = "easy"
+
+
+class ManualMoveRequest(BaseModel):
+    move: Any
+
+
+class ManualGameResponse(BaseModel):
+    match_id: str
+    status: str
+    game: str
+    opponent: Optional[str]
+    human_player: Optional[int]
+    current_board: Optional[Any] = None
+    current_legal_moves: Optional[list] = None
+    moves: list[MoveRecord] = []
+    result: Optional[MatchResultSchema] = None
+    error: Optional[str] = None
+
+
 # --- Leaderboard schemas ---
 
 class LeaderboardEntry(BaseModel):

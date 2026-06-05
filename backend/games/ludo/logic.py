@@ -51,6 +51,9 @@ START = {Color.RED: 0, Color.GREEN: 13, Color.YELLOW: 26, Color.BLUE: 39}
 # This 2-player game uses opposite corners: Player 1 = RED, Player 2 = YELLOW.
 PLAYER_COLOR = {1: Color.RED, 2: Color.YELLOW}
 
+# Ring squares where captures are forbidden: the 4 start squares plus 4 midpoint stars.
+SAFE_RING_INDICES = frozenset({0, 8, 13, 21, 26, 34, 39, 47})
+
 
 @dataclass(frozen=True)
 class Position:
@@ -166,6 +169,9 @@ class LudoGame:
         new_state = state.copy()
         new_state.move_count += 1
 
+        captured = False
+        finished = False
+
         if move != "NO_MOVE":
             toks = new_state.tokens[player - 1]
             pos = toks[move]
@@ -173,17 +179,21 @@ class LudoGame:
             landed = _position(player, new_d)
             toks[move] = landed
 
+            finished = landed.is_finished
+
             # Capture: an opponent token on the SAME shared ring index is sent
             # back to base. Home columns are private, so no captures there.
-            if landed.zone == Zone.RING:
+            # Safe squares are immune to capture.
+            if landed.zone == Zone.RING and landed.index not in SAFE_RING_INDICES:
                 opp = 3 - player
                 opp_toks = new_state.tokens[opp - 1]
                 for j, op in enumerate(opp_toks):
                     if op.zone == Zone.RING and op.index == landed.index:
                         opp_toks[j] = BASE_POSITION
+                        captured = True
 
-        # A 6 grants another turn; otherwise (and always on NO_MOVE) pass play.
-        if move != "NO_MOVE" and state.dice == 6:
+        # A 6, a capture, or landing a token on HOME each grant an extra turn.
+        if move != "NO_MOVE" and (state.dice == 6 or captured or finished):
             new_state.next_player = player
         else:
             new_state.next_player = 3 - player

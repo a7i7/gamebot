@@ -225,6 +225,60 @@ export async function getSubmission(
   return res.json();
 }
 
+// --- Manual Games ---
+
+export type ManualGameStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed";
+
+export interface ManualGameDetail {
+  match_id: string;
+  status: ManualGameStatus;
+  game: string;
+  opponent: string | null;
+  human_player: number | null;
+  current_board: BoardData | null;
+  current_legal_moves: (number[] | number | string)[] | null;
+  moves: MoveRecord[];
+  result: MatchResult | null;
+  error: string | null;
+}
+
+export async function createManualGame(
+  game: string,
+  opponent: string = "easy"
+): Promise<{ match_id: string }> {
+  const res = await fetch(`${API_URL}/manual-games`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ game, opponent }),
+  });
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
+  return res.json();
+}
+
+export async function getManualGame(matchId: string): Promise<ManualGameDetail> {
+  const res = await fetch(`${API_URL}/manual-games/${matchId}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function submitManualMove(
+  matchId: string,
+  move: number[] | number | string
+): Promise<void> {
+  const res = await fetch(`${API_URL}/manual-games/${matchId}/move`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ move }),
+  });
+  if (!res.ok) throw new Error(await extractErrorMessage(res));
+}
+
 export async function getLeaderboard(game: string): Promise<LeaderboardEntry[]> {
   const res = await fetch(`${API_URL}/leaderboards/${game}`);
   if (!res.ok) throw new Error(await res.text());

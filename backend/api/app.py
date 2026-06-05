@@ -1,5 +1,8 @@
 import asyncio
 import os
+import random
+import shutil
+import tempfile
 import time
 import uuid
 
@@ -14,6 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.models import (
     CodeResponse,
     LeaderboardEntry,
+    ManualGameRequest,
+    ManualGameResponse,
+    ManualMoveRequest,
+    MoveRecord,
+    MatchResultSchema,
     SubmissionRequest,
     SubmissionResponse,
     SubmissionSummary,
@@ -21,11 +29,15 @@ from api.models import (
     TestRunRequest,
     TestRunResponse,
     TestRunSummary,
-    MatchResultSchema,
 )
 from api.routers import auth as auth_router
+from referee.human_bot import HumanBotProxy
+from referee.referee import Referee
+from referee.bot_process import BotProcess
+from referee.main import GAME_MAP, LANG_IMAGE_MAP
+from bots.registry import get_opponent
 from auth.deps import get_current_user
-from db.engine import engine, get_session
+from db.engine import engine, get_session, AsyncSessionLocal
 from db.models import Base, User
 from db.repos import matches as matches_repo
 from db.repos import scored_submissions as scored_submissions_repo
@@ -41,6 +53,9 @@ match_semaphore = asyncio.Semaphore(5)
 RATE_LIMIT_SECONDS = int(os.environ.get("RATE_LIMIT_SECONDS", "1"))
 _test_run_last: dict[str, float] = {}
 _submission_last: dict[str, float] = {}
+
+# In-memory map of live manual game proxies: match_id (str) → HumanBotProxy
+_human_proxies: dict[str, HumanBotProxy] = {}
 
 
 def _check_rate_limit(store: dict[str, float], user_id) -> None:
@@ -169,7 +184,7 @@ async def list_test_runs(
             submitted_at=m.created_at,
         )
         for m in matches
-        if m.scored_submission_id is None
+        if m.scored_submission_id is None and m.player1_submission.lang != "human"
     ]
 
 
@@ -324,6 +339,204 @@ async def get_leaderboard(
         )
         for i, row in enumerate(entries)
     ]
+
+
+# --- Manual game helpers ---
+
+LANG_EXT = {"python": ".py", "javascript": ".js", "java": ".java", "cpp": ".cpp"}
+
+
+def _to_manual_game_response(match) -> ManualGameResponse:
+    result_schema = None
+    if match.status == "completed" and match.final_board is not None:
+        result_schema = MatchResultSchema(
+            winner_player=match.winner_player,
+            loser_player=_loser(match.winner_player),
+            user_player=match.user_player,
+            is_draw=match.is_draw or False,
+            reason=match.reason or "",
+            turn=match.turns or 0,
+            board=match.final_board,
+            bot_logs=match.bot_logs or [],
+            moves=match.moves or [],
+        )
+    return ManualGameResponse(
+        match_id=str(match.id),
+        status=match.status,
+        game=match.game,
+        opponent=match.opponent,
+        human_player=match.user_player,
+        current_board=match.current_board,
+        current_legal_moves=match.current_legal_moves,
+        moves=[MoveRecord(**m) for m in (match.moves or [])],
+        result=result_schema,
+        error=match.error,
+    )
+
+
+async def _run_manual_referee(
+    match_id: uuid.UUID,
+    referee: Referee,
+    tmpdir: str,
+    human_player: int,
+) -> None:
+    try:
+        result = await referee.run()
+        async with AsyncSessionLocal() as session:
+            await matches_repo.update_match_result(
+                session,
+                match_id,
+                status="completed",
+                winner_player=result.winner_player,
+                user_player=human_player,
+                is_draw=result.is_draw,
+                reason=result.reason,
+                turns=result.turn,
+                final_board=result.board,
+                bot_logs=result.bot_logs,
+                moves=result.moves,
+            )
+    except Exception as exc:
+        async with AsyncSessionLocal() as session:
+            await matches_repo.update_match_result(
+                session, match_id, status="failed", error=str(exc),
+            )
+    finally:
+        _human_proxies.pop(str(match_id), None)
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+# --- Manual game endpoints ---
+
+@app.post("/manual-games", status_code=201)
+async def create_manual_game(
+    req: ManualGameRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> dict:
+    # Dummy submission represents "the human player" (no code)
+    submission = await submissions_repo.create_submission(
+        session,
+        user_id=current_user.id,
+        game=req.game,
+        lang="human",
+        code="",
+    )
+    human_player = random.choice([1, 2])
+    match = await matches_repo.create_match(
+        session,
+        game=req.game,
+        player1_submission_id=submission.id,
+        opponent=req.opponent,
+        user_player=human_player,
+    )
+    match_id = match.id
+
+    # Build the human proxy with DB-write callbacks
+    async def _on_human_turn(board, legal_moves):
+        async with AsyncSessionLocal() as s:
+            await matches_repo.update_live_state(
+                s, match_id,
+                current_board=board,
+                current_legal_moves=legal_moves,
+            )
+
+    async def _on_move_applied(moves):
+        async with AsyncSessionLocal() as s:
+            await matches_repo.update_live_state(
+                s, match_id,
+                current_board=moves[-1]["board"] if moves else None,
+                current_legal_moves=None,  # cleared until next human turn
+                moves=moves,
+            )
+
+    proxy = HumanBotProxy(on_human_turn=_on_human_turn)
+
+    # Build opponent BotProcess
+    tmpdir = tempfile.mkdtemp(prefix=f"gamebot-manual-{match_id}-")
+    opp = get_opponent(req.game, req.opponent)
+    opp_ext = LANG_EXT[opp["lang"]]
+    opp_filename = f"GameBot{opp_ext}" if opp["lang"] == "java" else f"opp{opp_ext}"
+    opp_file = os.path.join(tmpdir, opp_filename)
+    shutil.copy(opp["file"], opp_file)
+
+    match_tag = uuid.uuid4().hex[:8]
+    opp_bot = BotProcess(
+        container_image=LANG_IMAGE_MAP[opp["lang"]],
+        bot_file_path=opp_file,
+        container_name=f"gamebot-manual-{match_tag}-opp",
+        protocol_on_stderr=opp["lang"] == "java",
+    )
+
+    game = GAME_MAP[req.game]()
+    if human_player == 1:
+        bot1, bot2 = proxy, opp_bot
+    else:
+        bot1, bot2 = opp_bot, proxy
+
+    referee = Referee.with_bots(game, bot1, bot2, on_move_applied=_on_move_applied)
+
+    _human_proxies[str(match_id)] = proxy
+    await matches_repo.update_status(session, match_id, "running")
+    asyncio.create_task(_run_manual_referee(match_id, referee, tmpdir, human_player))
+    return {"match_id": str(match_id)}
+
+
+@app.get("/manual-games/{match_id}", response_model=ManualGameResponse)
+async def get_manual_game(
+    match_id: str,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> ManualGameResponse:
+    try:
+        mid = uuid.UUID(match_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Game not found")
+    match = await matches_repo.get_match(session, mid)
+    if match is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    if match.player1_submission.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return _to_manual_game_response(match)
+
+
+@app.post("/manual-games/{match_id}/move", status_code=204)
+async def submit_manual_move(
+    match_id: str,
+    req: ManualMoveRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    try:
+        mid = uuid.UUID(match_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Game not found")
+    match = await matches_repo.get_match(session, mid)
+    if match is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    if match.player1_submission.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    if match.current_legal_moves is None:
+        raise HTTPException(status_code=409, detail="Not your turn")
+
+    # Validate move is legal. TTT moves are [row, col] lists; Ludo are ints or "NO_MOVE".
+    # An empty legal list means the only valid action is NO_MOVE (Ludo forced pass).
+    legal = match.current_legal_moves
+    move = req.move
+    if legal == [] and move == "NO_MOVE":
+        pass
+    elif not any(m == move for m in legal):
+        raise HTTPException(status_code=422, detail="Illegal move")
+
+    proxy = _human_proxies.get(str(mid))
+    if proxy is None:
+        raise HTTPException(status_code=409, detail="Game is no longer active")
+
+    # Clear legal moves immediately so concurrent requests get 409
+    async with AsyncSessionLocal() as s:
+        await matches_repo.update_live_state(s, mid, current_board=match.current_board, current_legal_moves=None)
+
+    proxy.submit_move(move)
 
 
 @app.get("/health")

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import type { MoveRecord } from "@/lib/api";
 import Board from "@/components/Board";
-import LudoBoard from "@/components/LudoBoard";
+import LudoBoardVisual from "@/components/LudoBoardVisual";
 import type { LudoBoardData } from "@/components/LudoBoard";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,9 +34,9 @@ interface ReplayPlayerProps {
   userPlayer: number | null;
 }
 
-function formatMove(record: MoveRecord): string {
+function formatMove(record: MoveRecord, userPlayer: number | null): string {
   if (record.turn === 0) return "Initial state";
-  const who = record.player === 1 ? "You" : "Opponent";
+  const who = record.player === userPlayer ? "You" : "Opponent";
   if (Array.isArray(record.move)) {
     const [r, c] = record.move as number[];
     return `Turn ${record.turn} — ${who} played row ${r}, col ${c}`;
@@ -79,17 +79,21 @@ export default function ReplayPlayer({ moves, game, userPlayer }: ReplayPlayerPr
   return (
     <div className="space-y-4">
       <div className="text-sm text-muted-foreground font-medium min-h-[1.25rem]">
-        {formatMove(current)}
+        {formatMove(current, userPlayer)}
       </div>
 
       {game === "ludo" ? (
-        <LudoBoard board={current.board as LudoBoardData} userPlayer={userPlayer} />
+        <LudoBoardVisual board={current.board as LudoBoardData} userPlayer={userPlayer} size="lg" />
       ) : (
         <div className="space-y-2">
           <Board board={current.board as number[][]} />
           <div className="flex gap-4 text-xs text-muted-foreground">
-            <span className="text-primary font-semibold">X — You</span>
-            <span className="text-destructive font-semibold">O — Opponent</span>
+            <span className={userPlayer === 1 ? "text-primary font-semibold" : "text-destructive font-semibold"}>
+              X — {userPlayer === 1 ? "You" : "Opponent"}
+            </span>
+            <span className={userPlayer === 1 ? "text-destructive font-semibold" : "text-primary font-semibold"}>
+              O — {userPlayer === 1 ? "Opponent" : "You"}
+            </span>
           </div>
         </div>
       )}

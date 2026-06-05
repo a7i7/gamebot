@@ -14,12 +14,14 @@ async def create_match(
     player1_submission_id: uuid.UUID,
     opponent: str | None = None,
     scored_submission_id: uuid.UUID | None = None,
+    user_player: int | None = None,
 ) -> Match:
     match = Match(
         game=game,
         player1_submission_id=player1_submission_id,
         opponent=opponent,
         scored_submission_id=scored_submission_id,
+        user_player=user_player,
     )
     session.add(match)
     await session.commit()
@@ -74,6 +76,24 @@ async def update_match_result(
     match.error = error
     match.points_earned = points_earned
     match.completed_at = datetime.now(timezone.utc)
+    await session.commit()
+
+
+async def update_live_state(
+    session: AsyncSession,
+    match_id: uuid.UUID,
+    *,
+    current_board: object = None,
+    current_legal_moves: list | None = None,
+    moves: list | None = None,
+) -> None:
+    match = await session.get(Match, match_id)
+    if not match:
+        return
+    match.current_board = current_board
+    match.current_legal_moves = current_legal_moves
+    if moves is not None:
+        match.moves = moves
     await session.commit()
 
 

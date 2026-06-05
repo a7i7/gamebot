@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { getTestRun } from "@/lib/api";
 import type { TestRunDetail } from "@/lib/api";
 import Board from "@/components/Board";
-import LudoBoard from "@/components/LudoBoard";
+import LudoBoardVisual from "@/components/LudoBoardVisual";
 import type { LudoBoardData } from "@/components/LudoBoard";
 import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -132,9 +132,10 @@ export function ResultsPanel({ matchId }: ResultsPanelProps) {
               Final Board
             </p>
             {match.game === "ludo" ? (
-              <LudoBoard
+              <LudoBoardVisual
                 board={result.board as LudoBoardData}
                 userPlayer={result.user_player}
+                size="sm"
               />
             ) : (
               <>

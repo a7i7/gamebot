@@ -56,13 +56,20 @@ export default function GamesPage() {
             </CardHeader>
             <CardContent className="flex flex-1 flex-col gap-4">
               <p className="text-sm text-muted-foreground">{game.description}</p>
-              <div className="mt-auto">
+              <div className="mt-auto flex flex-col gap-2">
                 {game.available ? (
-                  <Link href={`/games/${game.id}`} className="block">
-                    <Button className="w-full" size="sm">
-                      Play →
-                    </Button>
-                  </Link>
+                  <>
+                    <Link href={`/games/${game.id}`} className="block">
+                      <Button className="w-full" size="sm">
+                        Submit Bot →
+                      </Button>
+                    </Link>
+                    <Link href={`/games/${game.id}/play`} className="block">
+                      <Button className="w-full" variant="outline" size="sm">
+                        Play vs Bot
+                      </Button>
+                    </Link>
+                  </>
                 ) : (
                   <Button className="w-full" size="sm" disabled>
                     Coming Soon
