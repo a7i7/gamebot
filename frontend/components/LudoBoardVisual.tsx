@@ -227,6 +227,7 @@ interface LudoBoardVisualProps {
   onMove?: (tokenIndex: number) => void;
   disabled?: boolean;
   passButton?: React.ReactNode;
+  lastMove?: { player: number; tokenIndex: number } | null;
 }
 
 export default function LudoBoardVisual({
@@ -237,7 +238,23 @@ export default function LudoBoardVisual({
   onMove,
   disabled,
   passButton,
+  lastMove,
 }: LudoBoardVisualProps) {
+  // "row,col" key of the last-moved token's cell, for the yellow highlight
+  const lastMovedKey = useMemo(() => {
+    if (!lastMove) return null;
+    const { player, tokenIndex } = lastMove;
+    const color = board.colors?.[String(player)] ?? "";
+    const pos = board.tokens[player - 1]?.[tokenIndex];
+    if (!pos) return null;
+    let cell: [number, number] | undefined;
+    if (pos.zone === "BASE") cell = BASE_SLOTS[color]?.[tokenIndex];
+    else if (pos.zone === "RING") cell = RING[pos.index];
+    else if (pos.zone === "HOME_COLUMN") cell = HOME_COL[color]?.[pos.index];
+    if (!cell) return null;
+    return `${cell[0]},${cell[1]}`;
+  }, [lastMove, board]);
+
   // Build a "row,col" → TokenInfo[] map for rendering tokens on the grid
   const tokenMap = useMemo(() => {
     const map = new Map<string, TokenInfo[]>();
@@ -337,6 +354,10 @@ export default function LudoBoardVisual({
                 className={`relative ${bg}`}
                 style={{ outline: "0.5px solid rgba(0,0,0,0.07)" }}
               >
+                {/* Last-moved piece highlight */}
+                {key === lastMovedKey && (
+                  <div className="absolute inset-0 ring-2 ring-inset ring-green-400 pointer-events-none" />
+                )}
                 {/* Center finish star */}
                 {isCenter && (
                   <div

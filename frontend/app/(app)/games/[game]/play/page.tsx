@@ -129,6 +129,7 @@ export default function PlayPage() {
   const [gameState, setGameState] = useState<ManualGameDetail | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [startError, setStartError] = useState("");
+  const [lastMove, setLastMove] = useState<{ player: number; tokenIndex: number } | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Playback: step through opponent moves one-by-one with delays
@@ -183,7 +184,12 @@ export default function PlayPage() {
 
     newOppMoves.forEach((move) => {
       timers.push(
-        setTimeout(() => setDisplayBoard(move.board as BoardData), delay),
+        setTimeout(() => {
+          setDisplayBoard(move.board as BoardData);
+          if (move.player !== null && typeof move.move === "number") {
+            setLastMove({ player: move.player, tokenIndex: move.move });
+          }
+        }, delay),
       );
       delay += 900;
     });
@@ -247,6 +253,9 @@ export default function PlayPage() {
 
   async function handleMove(move: number[] | number | string) {
     if (submitting || !matchId) return;
+    if (gameState && typeof move === "number") {
+      setLastMove({ player: gameState.human_player!, tokenIndex: move });
+    }
     setSubmitting(true);
     // Optimistically clear legal moves so the board goes into "thinking" state
     setGameState((prev) =>
@@ -295,6 +304,7 @@ export default function PlayPage() {
     setMatchId(null);
     setGameState(null);
     setSubmitting(false);
+    setLastMove(null);
   }
 
   const isMyTurn =
@@ -329,7 +339,7 @@ export default function PlayPage() {
 
         <div className="flex flex-col gap-3">
           <label className="text-sm font-medium">Opponent difficulty</label>
-          <Select value={opponent} onValueChange={setOpponent}>
+          <Select value={opponent} onValueChange={(v) => v && setOpponent(v)}>
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
@@ -437,6 +447,7 @@ export default function PlayPage() {
                   legalMoves={legalMoves as number[]}
                   onMove={(ti) => handleMove(ti)}
                   disabled={boardDisabled}
+                  lastMove={lastMove}
                   passButton={
                     isMyTurn && !submitting && legalMoves.length === 0 ? (
                       <Button

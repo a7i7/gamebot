@@ -4,7 +4,7 @@ from typing import Optional
 from .exceptions import BotTimeoutError, BotOOMError, BotCrashError
 from .protocol import parse_bot_response
 
-MOVE_TIMEOUT_S = 5.0
+MOVE_TIMEOUT_S = 10*60
 OOM_POLL_INTERVAL_S = 0.05
 
 
