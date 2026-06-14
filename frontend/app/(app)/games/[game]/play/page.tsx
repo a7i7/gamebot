@@ -130,6 +130,7 @@ export default function PlayPage() {
   const [submitting, setSubmitting] = useState(false);
   const [startError, setStartError] = useState("");
   const [lastMove, setLastMove] = useState<{ player: number; tokenIndex: number } | null>(null);
+  const [diceRoller, setDiceRoller] = useState<{ color: string; isYou: boolean } | null>(null);
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Playback: step through opponent moves one-by-one with delays
@@ -151,27 +152,39 @@ export default function PlayPage() {
       playbackActiveRef.current = false;
       setPlayingBack(false);
       setDisplayBoard(gameState.current_board);
+      setDiceRoller(null);
       return;
     }
 
     if (playbackActiveRef.current) return;
 
     const hp = gameState.human_player;
-    const newOppMoves = gameState.moves.filter(
-      (m) =>
-        m.player !== null &&
-        m.player !== hp &&
-        m.turn > lastAnimatedTurnRef.current,
-    );
+    const gameColors = (gameState.current_board as LudoBoardData | null)?.colors;
+    const colorOf = (player: number | null): string =>
+      player == null ? "" : (gameColors?.[String(player)] ?? "");
+    // Whose dice is currently being shown, for the "X rolled" label
+    const humanRoller =
+      gameState.current_legal_moves !== null
+        ? { color: colorOf(hp), isYou: true }
+        : null;
+    const newOppMoves = gameState.moves
+      .map((m, i) => ({ m, i }))
+      .filter(
+        ({ m }) =>
+          m.player !== null &&
+          m.player !== hp &&
+          m.turn > lastAnimatedTurnRef.current,
+      );
 
     if (newOppMoves.length === 0) {
       setDisplayBoard(gameState.current_board);
+      setDiceRoller(humanRoller);
       return;
     }
 
     // Show the board as it was before the opponent started moving
     const firstOppIdx = gameState.moves.findIndex(
-      (m) => m.turn === newOppMoves[0].turn,
+      (m) => m.turn === newOppMoves[0].m.turn,
     );
     if (firstOppIdx > 0)
       setDisplayBoard(gameState.moves[firstOppIdx - 1].board as BoardData);
@@ -182,21 +195,47 @@ export default function PlayPage() {
     const timers: ReturnType<typeof setTimeout>[] = [];
     let delay = 500;
 
-    newOppMoves.forEach((move) => {
+    // Animate each opponent move in two phases: first roll the dice (showing the
+    // new number on the pre-move board), then move the piece. This makes it clear
+    // what the bot rolled before it acts.
+    const ROLL_MS = 800; // dice bounce animation (~720 ms) settle time
+    const MOVE_MS = 700; // pause after the piece moves
+    newOppMoves.forEach(({ m: move, i }) => {
+      const prevBoard =
+        i > 0 ? (gameState.moves[i - 1].board as LudoBoardData) : null;
+      const after = move.board as LudoBoardData;
+
+      // Phase 1: roll the dice — old token positions, new dice value
+      const oppRoller = { color: colorOf(move.player), isYou: false };
+      if (prevBoard) {
+        timers.push(
+          setTimeout(() => {
+            setDisplayBoard({ ...prevBoard, dice: after.dice });
+            setDiceRoller(oppRoller);
+          }, delay),
+        );
+        delay += ROLL_MS;
+      }
+
+      // Phase 2: move the piece
       timers.push(
         setTimeout(() => {
-          setDisplayBoard(move.board as BoardData);
+          setDisplayBoard(after as BoardData);
+          setDiceRoller(oppRoller);
           if (move.player !== null && typeof move.move === "number") {
             setLastMove({ player: move.player, tokenIndex: move.move });
           }
         }, delay),
       );
-      delay += 900;
+      delay += MOVE_MS;
     });
 
     // Show human's board (their dice has been rolled) after all opponent moves
     timers.push(
-      setTimeout(() => setDisplayBoard(gameState.current_board), delay),
+      setTimeout(() => {
+        setDisplayBoard(gameState.current_board);
+        setDiceRoller(humanRoller);
+      }, delay),
     );
 
     // Unlock interaction after the human's dice animation settles (~720 ms)
@@ -205,7 +244,7 @@ export default function PlayPage() {
         setPlayingBack(false);
         playbackActiveRef.current = false;
         lastAnimatedTurnRef.current = Math.max(
-          ...newOppMoves.map((m) => m.turn),
+          ...newOppMoves.map(({ m }) => m.turn),
         );
         playbackTimersRef.current = [];
       }, delay + 750),
@@ -305,6 +344,7 @@ export default function PlayPage() {
     setGameState(null);
     setSubmitting(false);
     setLastMove(null);
+    setDiceRoller(null);
   }
 
   const isMyTurn =
@@ -448,6 +488,7 @@ export default function PlayPage() {
                   onMove={(ti) => handleMove(ti)}
                   disabled={boardDisabled}
                   lastMove={lastMove}
+                  diceRoller={diceRoller}
                   passButton={
                     isMyTurn && !submitting && legalMoves.length === 0 ? (
                       <Button

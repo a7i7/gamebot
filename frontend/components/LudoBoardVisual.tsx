@@ -228,6 +228,7 @@ interface LudoBoardVisualProps {
   disabled?: boolean;
   passButton?: React.ReactNode;
   lastMove?: { player: number; tokenIndex: number } | null;
+  diceRoller?: { color: string; isYou: boolean } | null;
 }
 
 export default function LudoBoardVisual({
@@ -239,6 +240,7 @@ export default function LudoBoardVisual({
   disabled,
   passButton,
   lastMove,
+  diceRoller,
 }: LudoBoardVisualProps) {
   // "row,col" key of the last-moved token's cell, for the yellow highlight
   const lastMovedKey = useMemo(() => {
@@ -318,6 +320,14 @@ export default function LudoBoardVisual({
       style={{ width: boardPx }}
     >
       <div className="flex items-center gap-3">
+        {diceRoller && (
+          <span
+            className="text-sm font-semibold"
+            style={{ color: tokenHex(diceRoller.color) }}
+          >
+            {diceRoller.isYou ? "You rolled" : `${diceRoller.color} rolled`}
+          </span>
+        )}
         <div
           className={`text-4xl select-none transition-transform ${rolling ? "animate-bounce" : ""}`}
         >
